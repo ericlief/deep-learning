@@ -117,9 +117,9 @@ class Network:
         with self.session.graph.as_default():
             
             # Inputs
-            noInputFeatures = 2 * args.window + 1
-            noOutputFeatures = 2
-            self.windows = tf.placeholder(tf.int32, [None, noInputFeatures], name="windows")
+            n_input_features = 2 * args.window + 1
+            n_output_features = 2
+            self.windows = tf.placeholder(tf.int32, [None, n_input_features], name="windows")
             self.labels = tf.placeholder(tf.int64, [None], name="labels") # Or you can use tf.int32
             self.is_training = tf.placeholder(tf.bool, [], name="is_training")
 
@@ -134,19 +134,25 @@ class Network:
             print("flat ", hidden_layer)
             
             if args.layers is None:
-                noLayers = noInputFeatures + 1
-            else: noLayers = args.layers
+                n_layers = n_input_features + 1
+            else: n_layers = args.layers
             
-            ratio = math.ceil((noInputFeatures/noOutputFeatures)**(1/(noLayers+1)))
-            for i in range(0, noLayers):
+            ratio = math.ceil((n_input_features/n_output_features)**(1/(n_layers+1)))
+            size_hidden_layer = args.hidden_layer
+            for i in range(0, n_layers):
+                # If size of hidden layer(s) is not specified, a triangular formula
+                # will be used to determine the size of each layer 
+                if args.hidden_layer is None:
+                    size_hidden_layer = n_output_features*ratio**(n_layers-i)
+                    
                 if args.activation == "none":
-                    hidden_layer = tf.layers.dense(hidden_layer, noOutputFeatures*ratio**(noLayers-i), activation=None, name="hidden_layer"+str(i))
+                    hidden_layer = tf.layers.dense(hidden_layer, size_hidden_layer, activation=None, name="hidden_layer"+str(i))
                 elif (args.activation == "relu"):
-                    hidden_layer = tf.layers.dense(hidden_layer, noOutputFeatures*ratio**(noLayers-i), activation=tf.nn.relu, name="hidden_layer"+str(i))
+                    hidden_layer = tf.layers.dense(hidden_layer, size_hidden_layer, activation=tf.nn.relu, name="hidden_layer"+str(i))
                 elif (args.activation == "tanh"):
-                    hidden_layer = tf.layers.dense(hidden_layer, noOutputFeatures*ratio**(noLayers-i), activation=tf.nn.tanh, name="hidden_layer"+str(i))
+                    hidden_layer = tf.layers.dense(hidden_layer, size_hidden_layer, activation=tf.nn.tanh, name="hidden_layer"+str(i))
                 elif (args.activation == "sigmoid"):
-                    hidden_layer = tf.layers.dense(hidden_layer, noOutputFeatures*ratio**(noLayers-i), activation=tf.nn.sigmoid, name="hidden_layer"+str(i))
+                    hidden_layer = tf.layers.dense(hidden_layer, size_hidden_layer, activation=tf.nn.sigmoid, name="hidden_layer"+str(i))
                 else:
                     print("Error: unknown activation")
                 
@@ -155,7 +161,7 @@ class Network:
                                    lambda: tf.nn.dropout(hidden_layer, keep_prob=(1 - args.dropout)), # func 1 if true
                                    lambda: hidden_layer) # func 2 otherwise        
 
-            output_layer = tf.layers.dense(hidden_layer_dropout, noOutputFeatures, activation=None, name="output_layer")
+            output_layer = tf.layers.dense(hidden_layer_dropout, n_output_features, activation=None, name="output_layer")
             #output_layer = tf.layers.dense(hidden_layer, 2, activation=None, name="output_layer")
             # Training
             print(output_layer)
@@ -215,14 +221,13 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", default=20, type=int, help="Number of epochs.")
     parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
     parser.add_argument("--window", default=4, type=int, help="Size of the window to use.")
-    #parser.add_argument("--hidden_layer", default=200, type=int, help="Size of the hidden layer.")
+    parser.add_argument("--hidden_layer", default=None, type=int, help="Size of the hidden layer.")
     parser.add_argument("--learning_rate", default=0.01, type=float, help="Initial learning rate.")
     parser.add_argument("--learning_rate_final", default=None, type=float, help="Final learning rate.")
     parser.add_argument("--momentum", default=None, type=float, help="Momentum.")
     parser.add_argument("--optimizer", default="sgd", type=str, help="Optimizer to use.")
     parser.add_argument("--dropout", default=0.0, type=float, help="Dropout rate.")
     parser.add_argument("--layers", default=None, type=int, help="Number of layers.")
-    #parser.add_argument("--training_size", default=5000, type=int, help="Number of training images.")
     args = parser.parse_args()
 
     # Create logdir name
@@ -255,3 +260,4 @@ if __name__ == "__main__":
         network.evaluate("dev", dev_windows, dev_labels)
 
     # TODO: Generate the uppercased test set
+    
