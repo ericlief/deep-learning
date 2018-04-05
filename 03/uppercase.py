@@ -274,13 +274,13 @@ if __name__ == "__main__":
         return ch[0].upper() if ch[1] else ch[0]
     
     upper = ''
-    with open("test.txt", 'r', encoding='utf-8') as f:
+    with open("uppercase_data_test.txt", 'r', encoding='utf-8') as f:
         lower = f.read()
         for i in range(len(lower)):
             ch = scanner((lower[i], predictions[i]))
             upper += ch
     
-    print(upper)      
-    with open('upper.txt', 'wt', encoding='utf-8') as f:
+    #print(upper)      
+    with open("uppercase.txt", 'wt', encoding='utf-8') as f:
         f.write(upper)
         
