@@ -171,10 +171,12 @@ class Network:
             global_step = tf.train.create_global_step()
             
             if args.optimizer == "Adam":
-                self.training = tf.train.AdamOptimizer().minimize(loss, global_step=global_step, name="training")
+                self.training = tf.train.AdamOptimizer().minimize(loss, global_step=global_step, name="adam")
             elif args.optimizer == "sgd":
                 self.training = tf.train.GradientDescentOptimizer(0.01).minimize(loss, global_step=global_step, name="sgd")
-                
+            elif args.optimizer == "mom":
+                self.training = tf.train.MomentumOptimizer(0.01, momentum=args.momentum).minimize(loss, global_step=global_step, name="momentum")
+              
             self.predictions = tf.argmax(output_layer, axis=1)
             
             # Summaries
