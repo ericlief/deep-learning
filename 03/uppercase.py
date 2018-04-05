@@ -72,8 +72,7 @@ class Dataset:
             #print("lc - i", self._lcletters[batch_permutation])
             batch_windows[:, i] = self._lcletters[batch_permutation + i]
             #print(batch_windows[:,i])
-        return batch_windows, self._labels[batch_permutation]
-
+        return batch_windows, self._labels[batch_permutation]  
     #@property
     #def alphabet(self):
         #return self._alphabet 
@@ -197,12 +196,16 @@ class Network:
 
     def train(self, windows, labels):
         #self.session.run([self.training, self.summaries["train"]], {self.windows: windows, self.labels: labels})
-        self.session.run([self.training, self.summaries["train"], ], feed_dict={self.windows: windows, self.labels: labels, self.is_training: True})
+        self.session.run([self.training, self.summaries["train"]], feed_dict={self.windows: windows, self.labels: labels, self.is_training: True})
 
     def evaluate(self, dataset, windows, labels):
         #return self.session.run(self.summaries[dataset], {self.windows: windows, self.labels: labels})
         return self.session.run([self.summaries[dataset], self.accuracy], feed_dict={self.windows: windows, self.labels: labels, self.is_training: False})
 
+    def predict(self, dataset, windows):
+        #return self.session.run(self.summaries[dataset], {self.windows: windows, self.labels: labels})
+        #return self.session.run(self.predictions, feed_dict={self.windows: windows, self.is_training: False})
+        return self.predictions.eval(session=self.session, feed_dict={self.windows: windows, self.is_training: False})
 
 if __name__ == "__main__":
     import argparse
@@ -240,6 +243,9 @@ if __name__ == "__main__":
 
     # Load the data
     #train = Dataset("text.txt", args.window, alphabet=args.alphabet_size)
+    #train = Dataset("train.txt", args.window, alphabet=args.alphabet_size)
+    #dev = Dataset("train.txt", args.window, alphabet=train._alphabet)
+    #test = Dataset("test.txt", args.window, alphabet=train._alphabet)
     train = Dataset("uppercase_data_train.txt", args.window, alphabet=args.alphabet_size)
     dev = Dataset("uppercase_data_dev.txt", args.window, alphabet=train._alphabet)
     test = Dataset("uppercase_data_test.txt", args.window, alphabet=train._alphabet)
@@ -260,4 +266,21 @@ if __name__ == "__main__":
         network.evaluate("dev", dev_windows, dev_labels)
 
     # TODO: Generate the uppercased test set
+    test_windows, test_labels = test.all_data() # note no labels, i.e. all False
+    predictions = network.predict("test", test_windows)
+    print(predictions)
     
+    def scanner(ch):
+        return ch[0].upper() if ch[1] else ch[0]
+    
+    upper = ''
+    with open("test.txt", 'r', encoding='utf-8') as f:
+        lower = f.read()
+        for i in range(len(lower)):
+            ch = scanner((lower[i], predictions[i]))
+            upper += ch
+    
+    print(upper)      
+    with open('upper.txt', 'wt', encoding='utf-8') as f:
+        f.write(upper)
+        
