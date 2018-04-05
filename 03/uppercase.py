@@ -243,12 +243,12 @@ if __name__ == "__main__":
 
     # Load the data
     #train = Dataset("text.txt", args.window, alphabet=args.alphabet_size)
-    #train = Dataset("train.txt", args.window, alphabet=args.alphabet_size)
-    #dev = Dataset("train.txt", args.window, alphabet=train._alphabet)
-    #test = Dataset("test.txt", args.window, alphabet=train._alphabet)
-    train = Dataset("uppercase_data_train.txt", args.window, alphabet=args.alphabet_size)
-    dev = Dataset("uppercase_data_dev.txt", args.window, alphabet=train._alphabet)
-    test = Dataset("uppercase_data_test.txt", args.window, alphabet=train._alphabet)
+    train = Dataset("train.txt", args.window, alphabet=args.alphabet_size)
+    dev = Dataset("train.txt", args.window, alphabet=train._alphabet)
+    test = Dataset("test.txt", args.window, alphabet=train._alphabet)
+    #train = Dataset("uppercase_data_train.txt", args.window, alphabet=args.alphabet_size)
+    #dev = Dataset("uppercase_data_dev.txt", args.window, alphabet=train._alphabet)
+    #test = Dataset("uppercase_data_test.txt", args.window, alphabet=train._alphabet)
 
     #Construct the network
     network = Network(threads=args.threads)
@@ -274,13 +274,14 @@ if __name__ == "__main__":
         return ch[0].upper() if ch[1] else ch[0]
     
     upper = ''
-    with open("uppercase_data_test.txt", 'r', encoding='utf-8') as f:
+    with open("test.txt", 'r', encoding='utf-8') as f:
         lower = f.read()
         for i in range(len(lower)):
             ch = scanner((lower[i], predictions[i]))
             upper += ch
     
-    #print(upper)      
-    with open("uppercase.txt", 'wt', encoding='utf-8') as f:
+    #print(upper)
+    suffix = 'w='+str(args.window)+'a='+str(args.activation)+'l='+str(args.layers)+'hl='+str(args.hidden_layer)+'o='+str(args.optimizer)+'d='+str(args.dropout)
+    with open("uppercase" + suffix + ".txt", 'wt', encoding='utf-8') as f:
         f.write(upper)
         
