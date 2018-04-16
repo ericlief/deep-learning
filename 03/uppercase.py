@@ -161,15 +161,14 @@ class Network:
                                    lambda: hidden_layer) # func 2 otherwise        
 
             output_layer = tf.layers.dense(hidden_layer_dropout, n_output_features, activation=None, name="output_layer")
-            #output_layer = tf.layers.dense(hidden_layer, 2, activation=None, name="output_layer")
+             
             # Training
-            print(output_layer)
-            
-            print(self.labels)
+            #print(output_layer)
+            #print(self.labels)
             loss = tf.losses.sparse_softmax_cross_entropy(self.labels, output_layer, scope="loss")
-            #loss = tf.losses.sigmoid_cross_entropy(self.labels, output_layer, scope="loss")
             global_step = tf.train.create_global_step()
             
+            # Choose optimizer
             if args.optimizer == "Adam":
                 self.training = tf.train.AdamOptimizer().minimize(loss, global_step=global_step, name="adam")
             elif args.optimizer == "sgd":
@@ -197,16 +196,12 @@ class Network:
                 tf.contrib.summary.initialize(session=self.session, graph=self.session.graph)
 
     def train(self, windows, labels):
-        #self.session.run([self.training, self.summaries["train"]], {self.windows: windows, self.labels: labels})
         self.session.run([self.training, self.summaries["train"]], feed_dict={self.windows: windows, self.labels: labels, self.is_training: True})
 
     def evaluate(self, dataset, windows, labels):
-        #return self.session.run(self.summaries[dataset], {self.windows: windows, self.labels: labels})
         return self.session.run([self.summaries[dataset], self.accuracy], feed_dict={self.windows: windows, self.labels: labels, self.is_training: False})
 
     def predict(self, dataset, windows):
-        #return self.session.run(self.summaries[dataset], {self.windows: windows, self.labels: labels})
-        #return self.session.run(self.predictions, feed_dict={self.windows: windows, self.is_training: False})
         return self.predictions.eval(session=self.session, feed_dict={self.windows: windows, self.is_training: False})
 
 if __name__ == "__main__":
@@ -244,7 +239,6 @@ if __name__ == "__main__":
     if not os.path.exists("logs"): os.mkdir("logs") # TF 1.6 will do this by itself
 
     # Load the data
-    #train = Dataset("text.txt", args.window, alphabet=args.alphabet_size)
     #train = Dataset("train.txt", args.window, alphabet=args.alphabet_size)
     #dev = Dataset("train.txt", args.window, alphabet=train._alphabet)
     #test = Dataset("test.txt", args.window, alphabet=train._alphabet)
@@ -267,12 +261,14 @@ if __name__ == "__main__":
         dev_windows, dev_labels = dev.all_data()
         network.evaluate("dev", dev_windows, dev_labels)
 
-    # TODO: Generate the uppercased test set
+    # Get test set predictions
     test_windows, test_labels = test.all_data() # note no labels, i.e. all False
     predictions = network.predict("test", test_windows)
-    print(predictions)
+    # print(predictions)
     
+    # Now generate the uppercase text
     def scanner(ch):
+        '''Translate char to uppercase'''
         return ch[0].upper() if ch[1] else ch[0]
     
     upper = ''
@@ -283,6 +279,7 @@ if __name__ == "__main__":
             upper += ch
     
     #print(upper)
+    # Write results
     suffix = 'w='+str(args.window)+'a='+str(args.activation)+'l='+str(args.layers)+'hl='+str(args.hidden_layer)+'o='+str(args.optimizer)+'d='+str(args.dropout)
     with open("uppercase" + suffix + ".txt", 'wt', encoding='utf-8') as f:
         f.write(upper)
