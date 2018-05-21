@@ -250,9 +250,9 @@ if __name__ == "__main__":
 
     # Load the data
     
-    #train = morpho_dataset.MorphoDataset("czech-pdt-train.txt")
+    train = morpho_dataset.MorphoDataset("czech-pdt-train.txt")
     
-    train = morpho_dataset.MorphoDataset("train.txt")
+    #train = morpho_dataset.MorphoDataset("train.txt")
     
     dev = morpho_dataset.MorphoDataset("czech-pdt-dev.txt", train=train, shuffle_batches=False)
     test = morpho_dataset.MorphoDataset("czech-pdt-test.txt", train=train, shuffle_batches=False)
