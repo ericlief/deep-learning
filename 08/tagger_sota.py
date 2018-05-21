@@ -53,6 +53,7 @@ class Network:
             self.charseq_lens = tf.placeholder(tf.int32, [None], name="charseq_lens")
             self.charseq_ids = tf.placeholder(tf.int32, [None, None], name="charseq_ids")
             self.tags = tf.placeholder(tf.int32, [None, None], name="tags")
+            self.is_training = tf.placeholder(tf.bool, [], name="is_training")
 
             # TODO(we): Choose RNN cell class according to args.rnn_cell (LSTM and GRU
             # should be supported, using tf.nn.rnn_cell.{BasicLSTM,GRU}Cell).
@@ -69,7 +70,11 @@ class Network:
                 # ?????????
                 cell_fw = tf.nn.rnn_cell.GRUCell(num_units)
                 cell_bw = tf.nn.rnn_cell.GRUCell(num_units)            
-                
+            
+            # Add dropout
+            cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, output_keep_prob=1-args.dropout)
+            cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, output_keep_prob=1-args.dropout)
+	            
             # Create word embeddings for num_words of dimensionality args.we_dim
             # using `tf.get_variable`.
             word_embeddings = tf.get_variable('word_embeddings', [num_words, args.we_dim])
@@ -104,8 +109,13 @@ class Network:
                 #output = tf.squeeze(output, axis=1) # remove extra dim
                 #print(output)
                  
-                output = tf.layers.conv1d(embedded_chars, args.cnne_filters, kernel_size, strides=1, padding='VALID', name='cnne_layer_'+str(kernel_size))
+                #output = tf.layers.conv1d(embedded_chars, args.cnne_filters, kernel_size, strides=1, padding='VALID', name='cnne_layer_'+str(kernel_size))
+                output = tf.layers.conv1d(embedded_chars, args.cnne_filters, kernel_size, strides=1, padding='VALID', activation=None, use_bias=False, name='cnne_layer_'+str(kernel_size))
                 
+                # Apply batch norm
+                if args.bn:
+                    output = tf.layers.batch_normalization(output, training=self.is_training, name='cnn_layer_BN_'+str(kernel_size))
+                output = tf.nn.relu(output, name='cnn_layer_relu_'+str(kernel_size))
                 pooling = tf.reduce_max(output, axis=1)
                 
                 #print(pooling)
@@ -128,10 +138,15 @@ class Network:
             # TODO(we): Using tf.nn.bidirectional_dynamic_rnn, process the embedded inputs.
             # Use given rnn_cell (different for fwd and bwd direction) and self.sentence_lens.
             outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell_fw=cell_fw, cell_bw=cell_bw, inputs=embedded_inputs, sequence_length=self.sentence_lens, dtype=tf.float32)
-
+            #output1 = tf.nn.batch_normalization(outputs[0], training=self.is_training, name='birnn_bn1'+str(kernel_size))
+            #output1 = tf.nn.relu(output1, name='birnn_relu1'+str(kernel_size))
+            #output2 = tf.nn.batch_normalization(outputs[0], training=self.is_training, name='birnn_bn2'+str(kernel_size))
+            #output2 = tf.nn.relu(output2, name='birnn_relu2'+str(kernel_size))
             # TODO(we): Concatenate the outputs for fwd and bwd directions (in the third dimension).
+            #output = tf.concat([output1, output2], axis=-1)
+            
             output = tf.concat(outputs, axis=-1)
-
+            
             # TODO(we): Add a dense layer (without activation) into num_tags classes and
             # store result in `output_layer`.
             output_layer = tf.layers.dense(output, num_tags) 
@@ -187,7 +202,7 @@ class Network:
                              {self.sentence_lens: sentence_lens,
                               self.charseqs: charseqs[train.FORMS], self.charseq_lens: charseq_lens[train.FORMS],
                               self.word_ids: word_ids[train.FORMS], self.charseq_ids: charseq_ids[train.FORMS],
-                              self.tags: word_ids[train.TAGS]})
+                              self.tags: word_ids[train.TAGS], self.is_training: True})
 
     def evaluate(self, dataset_name, dataset, batch_size):
         self.session.run(self.reset_metrics)
@@ -197,7 +212,7 @@ class Network:
                              {self.sentence_lens: sentence_lens,
                               self.charseqs: charseqs[train.FORMS], self.charseq_lens: charseq_lens[train.FORMS],
                               self.word_ids: word_ids[train.FORMS], self.charseq_ids: charseq_ids[train.FORMS],
-                              self.tags: word_ids[train.TAGS]})
+                              self.tags: word_ids[train.TAGS], self.is_training: False})
         return self.session.run([self.current_accuracy, self.summaries[dataset_name]])[0]
 
     def predict(self, dataset, batch_size):
@@ -207,7 +222,8 @@ class Network:
             tags.extend(self.session.run(self.predictions,
                                          {self.sentence_lens: sentence_lens,
                                           self.charseqs: charseqs[train.FORMS], self.charseq_lens: charseq_lens[train.FORMS],
-                                          self.word_ids: word_ids[train.FORMS], self.charseq_ids: charseq_ids[train.FORMS]}))
+                                          self.word_ids: word_ids[train.FORMS], self.charseq_ids: charseq_ids[train.FORMS], 
+                                          self.is_training: False}))
         return tags
 
 
@@ -236,7 +252,8 @@ if __name__ == "__main__":
     parser.add_argument("--learning_rate", default=0.01, type=float, help="Initial learning rate.")
     parser.add_argument("--learning_rate_final", default=None, type=float, help="Final learning rate.")
     parser.add_argument("--momentum", default=None, type=float, help="Momentum.")
-    parser.add_argument("--dropout", default=None, type=float, help="Dropout rate.")
+    parser.add_argument("--dropout", default=0, type=float, help="Dropout rate.")
+    parser.add_argument("--bn", default=False, type=bool, help="Batch normalization.")
     
     args = parser.parse_args()
 
@@ -250,16 +267,16 @@ if __name__ == "__main__":
 
     # Load the data
     
-    train = morpho_dataset.MorphoDataset("czech-pdt-train.txt")
+    #train = morpho_dataset.MorphoDataset("czech-pdt-train.txt")
     
-    #train = morpho_dataset.MorphoDataset("train.txt")
+    train = morpho_dataset.MorphoDataset("train.txt")
     
     dev = morpho_dataset.MorphoDataset("czech-pdt-dev.txt", train=train, shuffle_batches=False)
     test = morpho_dataset.MorphoDataset("czech-pdt-test.txt", train=train, shuffle_batches=False)
 
     analyzer_dictionary = MorphoAnalyzer("czech-pdt-analysis-dictionary.txt")
     analyzer_guesser = MorphoAnalyzer("czech-pdt-analysis-guesser.txt")
-
+    
     # Construct the network
     network = Network(threads=args.threads)
     network.construct(args, len(train.factors[train.FORMS].words), len(train.factors[train.FORMS].alphabet),
