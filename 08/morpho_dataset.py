@@ -68,22 +68,23 @@ class MorphoDataset:
 
                         # Character-level information
                         if word not in factor.charseqs_map:
-                            factor.charseqs_map[word] = len(factor.charseqs)
-                            factor.charseqs.append([])
+                            factor.charseqs_map[word] = len(factor.charseqs) # word to int (rank) of word in V
+                            factor.charseqs.append([]) # list of list of <charseqs> of type int [1,3,4,...]
                             if add_bow_eow:
                                 factor.charseqs[-1].append(factor.alphabet_map['<bow>'])
                             for c in word:
-                                if c not in factor.alphabet_map:
+                                if c not in factor.alphabet_map:  # this will add the new chars to map/list of letters
                                     if train:
                                         c = '<unk>'
                                     else:
-                                        factor.alphabet_map[c] = len(factor.alphabet)
+                                        factor.alphabet_map[c] = len(factor.alphabet) 
                                         factor.alphabet.append(c)
-                                factor.charseqs[-1].append(factor.alphabet_map[c])
+                                factor.charseqs[-1].append(factor.alphabet_map[c])     # <charseqs> now contain ints for chars 
                             if add_bow_eow:
                                 factor.charseqs[-1].append(factor.alphabet_map['<eow>'])
-                        factor.charseq_ids[-1].append(factor.charseqs_map[word])
-
+                        factor.charseq_ids[-1].append(factor.charseqs_map[word])  # charseqs_ids = seq to int/rank
+                        #print(factor.charseqs)
+                        
                         # Word-level information
                         if word not in factor.words_map:
                             if train:

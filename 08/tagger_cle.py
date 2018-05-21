@@ -25,8 +25,6 @@ class Network:
             self.charseq_ids = tf.placeholder(tf.int32, [None, None], name="charseq_ids")
             self.tags = tf.placeholder(tf.int32, [None, None], name="tags")
 
-            # Choose RNN cell class according to args.rnn_cell (LSTM and GRU
-            # should be supported, using tf.nn.rnn_cell.{BasicLSTM,GRU}Cell).
             num_units = args.rnn_cell_dim
             if args.rnn_cell == 'RNN':
                 cell_fw = tf.nn.rnn_cell.BasicRNNCell(num_units)
@@ -48,50 +46,57 @@ class Network:
             # TODO(we): Embed self.word_ids according to the word embeddings, by utilizing
             # `tf.nn.embedding_lookup`.
             embedded_words = tf.nn.embedding_lookup(word_embeddings, self.word_ids) # which word ids?
-            print('emb words', embedded_words)
+            #print('emb words', embedded_words)
+            
             # Character-level word embeddings (CLE)
             
             # TODO: Generate character embeddings for num_chars of dimensionality args.cle_dim. 
             # Note: get_var initializes with random numbers
             char_embeddings = tf.get_variable('char_embeddings', [num_chars, args.cle_dim])
-            print('emb chars', embedded_words)
+            #print('emb chars', embedded_words)
             
             # TODO: Embed self.charseqs (list of unique words in the batch) using the character embeddings.
-            embedded_chars = tf.nn.embedding_lookup(char_embeddings, self.charseq_ids)
+            embedded_chars = tf.nn.embedding_lookup(char_embeddings, self.charseqs)
+            #print('emb chars before gru', embedded_chars)
             
             # TODO: Use `tf.nn.bidirectional_dynamic_rnn` to process embedded self.charseqs using
             # a GRU cell of dimensionality `args.cle_dim`.
             gru_cell_fw = tf.nn.rnn_cell.GRUCell(args.cle_dim)
             gru_cell_bw = tf.nn.rnn_cell.GRUCell(args.cle_dim) 
-            print('gru', gru_cell_bw.state_size)
+            #print('gru', gru_cell_bw.state_size)
             
             # Run cell in limited scope fw and bw
             # in order to encode char information (subword factors)
+            # The cell is size of char dim, e.g. 32 -> output (?,32)
             outputs, states = tf.nn.bidirectional_dynamic_rnn(cell_fw=gru_cell_fw, cell_bw=gru_cell_bw, inputs=embedded_chars, sequence_length=self.charseq_lens, dtype=tf.float32, scope="cle")
             
             # TODO: Sum the resulting fwd and bwd state to generate character-level word embedding (CLE)
             # of unique words in the batch?????????????
             #print(states[0])
             #states = states[0] + states[1] 
-            cle = tf.add(states[0], states[1])
-            print('cle', cle.shape)            
+            #cle = tf.add(states[0], states[1])
+            cle = tf.reduce_sum(states, axis=0)
+            #print('cle', cle.shape)            
             #cle = tf.get_variable("cle", [?, args.cle_dim], initializer=cle)
             #cle = tf.get_variable("cle", [num_words, args.cle_dim])
             #cle = tf.Variable(cle)
             #print(cle)
             
             # TODO: Generate CLEs of all words in the batch by indexing the just computed embeddings
-            # by self.charseq_ids (using tf.nn.embedding_lookup).
+            # by self.charseq_ids (using tf.nn.embedding_lookup). This is only the unique char seqs.
             cles = tf.nn.embedding_lookup(cle, self.charseq_ids)
-            print(cles)
+            #print(cles) # (?,?,32)
+            
             # TODO: Concatenate the word embeddings (computed above) and the CLE (in this order).
-            embedded_inputs = tf.concat([embedded_words, cles], axis=2)
-            print(embedded_inputs)
+            embedded_inputs = tf.concat([embedded_words, cles], axis=-1)
+            #print(embedded_inputs) # (?,?,96) dim we = 64 + dim cle = 32
+            
             # TODO(we): Using tf.nn.bidirectional_dynamic_rnn, process the embedded inputs.
             # Use given rnn_cell (different for fwd and bwd direction) and self.sentence_lens.
             outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell_fw=cell_fw, cell_bw=cell_bw, inputs=embedded_inputs, sequence_length=self.sentence_lens, dtype=tf.float32)
+            
             # TODO(we): Concatenate the outputs for fwd and bwd directions (in the third dimension).
-            output = tf.concat(outputs, axis=2)
+            output = tf.concat(outputs, axis=-1)
 
             # TODO(we): Add a dense layer (without activation) into num_tags classes and
             # store result in `output_layer`.
@@ -107,6 +112,7 @@ class Network:
             # TODO(we): Define `loss` using `tf.losses.sparse_softmax_cross_entropy`, but additionally
             # use `weights` parameter to mask-out invalid words.
             loss = tf.losses.sparse_softmax_cross_entropy(labels=self.tags, logits=output_layer, weights=weights)
+
 
             global_step = tf.train.create_global_step()
             self.training = tf.train.AdamOptimizer().minimize(loss, global_step=global_step, name="training")
