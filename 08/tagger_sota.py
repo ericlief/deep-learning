@@ -72,9 +72,8 @@ class Network:
                 cell_bw = tf.nn.rnn_cell.GRUCell(num_units)            
             
             # Add dropout
-            cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, output_keep_prob=1-args.dropout)
-            cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, output_keep_prob=1-args.dropout)
-	            
+            cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout)
+            cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout)
             # Create word embeddings for num_words of dimensionality args.we_dim
             # using `tf.get_variable`.
             word_embeddings = tf.get_variable('word_embeddings', [num_words, args.we_dim])
@@ -150,10 +149,10 @@ class Network:
             # TODO(we): Add a dense layer (without activation) into num_tags classes and
             # store result in `output_layer`.
             output_layer = tf.layers.dense(output, num_tags) 
-
+            #print(output_layer)
             # TODO(we): Generate `self.predictions`.
             self.predictions = tf.argmax(output_layer, axis=-1) # 3rd dim!
-
+            #print(self.predictions)
             # TODO(we): Generate `weights` as a 1./0. mask of valid/invalid words (using `tf.sequence_mask`).
             weights = tf.sequence_mask(self.sentence_lens, dtype=tf.float32)
 
@@ -163,16 +162,38 @@ class Network:
             # use `weights` parameter to mask-out invalid words.
             loss = tf.losses.sparse_softmax_cross_entropy(labels=self.tags, logits=output_layer, weights=weights)
             global_step = tf.train.create_global_step()
-             
-            # Choose optimizer
+            
+            self.learning_rate = tf.get_variable("learning_rate", dtype=tf.float32, initializer=args.learning_rate) 
+            #self.learning_rate = tf.Print(self.learning_rate, [self.learning_rate], message='learning rate=')
+            # Set adaptable learning rate with decay
+            #self.learning_rate = args.learning_rate # init rate         
+            if args.learning_rate_final and args.epochs > 1:
+                decay_rate = (args.learning_rate_final / args.learning_rate)**(1 / (args.epochs - 1))
+                self.learning_rate = tf.train.exponential_decay(self.learning_rate, global_step, args.batch_size, decay_rate, staircase=True)
+            #else:
+                #self.learning_rate = args.learning_rate # init rate
+                
+            # Choose optimizer                                              
             if args.optimizer == "SGD" and args.momentum:
-                self.training = tf.train.MomentumOptimizer(learning_rate, momentum=args.momentum).minimize(loss, global_step=global_step, name="momentum")                
+                optimizer = tf.train.MomentumOptimizer(self.learning_rate, momentum=args.momentum) 
+                self.training = tf.train.GradientDescentOptimizer(self.learning_rate) 
             elif args.optimizer == "SGD":
-                self.training = tf.train.GradientDescentOptimizer(args.learning_rate).minimize(loss, global_step=global_step, name="sgd")
+                optimizer = tf.train.GradientDescentOptimizer(self.learning_rate) 
             else:                
-                self.training = tf.train.AdamOptimizer(args.learning_rate).minimize(loss, global_step=global_step, name="adam")
-
-               
+                optimizer = tf.train.AdamOptimizer(self.learning_rate) 
+                
+            
+            # Note how instead of `optimizer.minimize` we first get the # gradients using
+            # `optimizer.compute_gradients`, then optionally clip them and
+            # finally apply then using `optimizer.apply_gradients`.
+            gradients, variables = zip(*optimizer.compute_gradients(loss))
+            # TODO: Compute norm of gradients using `tf.global_norm` into `gradient_norm`.
+            gradient_norm = tf.global_norm(gradients) 
+            # TODO: If args.clip_gradient, clip gradients (back into `gradients`) using `tf.clip_by_global_norm`.            
+            if args.clip_gradient is not None:
+                gradients, _ = tf.clip_by_global_norm(gradients, clip_norm=args.clip_gradient, use_norm=gradient_norm)
+            self.training = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step)
+           
              
             # Summaries
             self.current_accuracy, self.update_accuracy = tf.metrics.accuracy(self.tags, self.predictions, weights=weights)
@@ -183,6 +204,7 @@ class Network:
             self.summaries = {}
             with summary_writer.as_default(), tf.contrib.summary.record_summaries_every_n_global_steps(10):
                 self.summaries["train"] = [tf.contrib.summary.scalar("train/loss", self.update_loss),
+                                           tf.contrib.summary.scalar("train/gradient_norm", gradient_norm),
                                            tf.contrib.summary.scalar("train/accuracy", self.update_accuracy)]
             with summary_writer.as_default(), tf.contrib.summary.always_record_summaries():
                 for dataset in ["dev", "test"]:
@@ -198,12 +220,14 @@ class Network:
         while not train.epoch_finished():
             sentence_lens, word_ids, charseq_ids, charseqs, charseq_lens = train.next_batch(batch_size, including_charseqs=True)
             self.session.run(self.reset_metrics)
+            #self.session.run([self.training, self.update_accuracy, self.summaries["train"]],
             self.session.run([self.training, self.summaries["train"]],
                              {self.sentence_lens: sentence_lens,
                               self.charseqs: charseqs[train.FORMS], self.charseq_lens: charseq_lens[train.FORMS],
                               self.word_ids: word_ids[train.FORMS], self.charseq_ids: charseq_ids[train.FORMS],
                               self.tags: word_ids[train.TAGS], self.is_training: True})
-
+        #return self.session.run([self.current_accuracy])
+            
     def evaluate(self, dataset_name, dataset, batch_size):
         self.session.run(self.reset_metrics)
         while not dataset.epoch_finished():
@@ -248,12 +272,13 @@ if __name__ == "__main__":
     parser.add_argument("--rnn_cell", default="LSTM", type=str, help="RNN cell type.")
     parser.add_argument("--rnn_cell_dim", default=64, type=int, help="RNN cell dimension.")
     parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
+    parser.add_argument("--learning_rate", default=0.001, type=float, help="Initial learning rate.") 
+    parser.add_argument("--learning_rate_final", default=None, type=float, help="Final learning rate.")    
     parser.add_argument("--we_dim", default=64, type=int, help="Word embedding dimension.")
-    parser.add_argument("--learning_rate", default=0.01, type=float, help="Initial learning rate.")
-    parser.add_argument("--learning_rate_final", default=None, type=float, help="Final learning rate.")
     parser.add_argument("--momentum", default=None, type=float, help="Momentum.")
     parser.add_argument("--dropout", default=0, type=float, help="Dropout rate.")
     parser.add_argument("--bn", default=False, type=bool, help="Batch normalization.")
+    parser.add_argument("--clip_gradient", default=None, type=float, help="Norm for gradient clipping.")
     
     args = parser.parse_args()
 
@@ -267,9 +292,9 @@ if __name__ == "__main__":
 
     # Load the data
     
-    train = morpho_dataset.MorphoDataset("czech-pdt-train.txt")
+    #train = morpho_dataset.MorphoDataset("czech-pdt-train.txt")
     
-    #train = morpho_dataset.MorphoDataset("train.txt")
+    train = morpho_dataset.MorphoDataset("train.txt")
     
     dev = morpho_dataset.MorphoDataset("czech-pdt-dev.txt", train=train, shuffle_batches=False)
     test = morpho_dataset.MorphoDataset("czech-pdt-test.txt", train=train, shuffle_batches=False)
@@ -284,12 +309,16 @@ if __name__ == "__main__":
 
     # Train
     for i in range(args.epochs):
+        #print(i, args.learning_rate)
+        #accuracy = network.train_epoch(train, args.batch_size)
         network.train_epoch(train, args.batch_size)
+        #print("train acc = {:.2f}".format(100 * accuracy))      
         accuracy = network.evaluate("dev", dev, args.batch_size)
         print("{:.2f}".format(100 * accuracy))
         
     # Predict test data
     with open("{}/tagger_sota_test.txt".format(args.logdir), "w") as test_file:
+        #print(test_file)
         forms = test.factors[test.FORMS].strings
         tags = network.predict(test, args.batch_size)
         for s in range(len(forms)):

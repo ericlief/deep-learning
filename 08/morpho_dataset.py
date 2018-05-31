@@ -83,8 +83,7 @@ class MorphoDataset:
                             if add_bow_eow:
                                 factor.charseqs[-1].append(factor.alphabet_map['<eow>'])
                         factor.charseq_ids[-1].append(factor.charseqs_map[word])  # charseqs_ids = seq to int/rank
-                        #print(factor.charseqs)
-                        
+                    
                         # Word-level information
                         if word not in factor.words_map:
                             if train:
@@ -98,7 +97,9 @@ class MorphoDataset:
                     in_sentence = False
                     if max_sentences is not None and len(self._factors[self.FORMS].word_ids) >= max_sentences:
                         break
-
+        
+        print(self._factors[0].charseqs[:10])
+        print(self._factors[0].charseq_ids[:2])        
         # Compute sentence lengths
         sentences = len(self._factors[self.FORMS].word_ids)
         self._sentence_lens = np.zeros([sentences], np.int32)

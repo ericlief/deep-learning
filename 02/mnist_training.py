@@ -3,8 +3,8 @@ import numpy as np
 import tensorflow as tf
 
 class Network:
-    WIDTH = 28
     HEIGHT = 28
+    WIDTH = 28    
     LABELS = 10
 
     def __init__(self, threads, seed=42):
@@ -17,17 +17,19 @@ class Network:
     def construct(self, args): 
         with self.session.graph.as_default():
             # Inputs
-            self.images = tf.placeholder(tf.float32, [None, self.WIDTH, self.HEIGHT, 1], name="images")
+            self.images = tf.placeholder(tf.float32, [None, self.HEIGHT, self.WIDTH, 1], name="images")
             self.labels = tf.placeholder(tf.int64, [None], name="labels")
 
             # Computation
+            #print(self.images)
             flattened_images = tf.layers.flatten(self.images, name="flatten")
+            #print(flattened_images)
             hidden_layer = tf.layers.dense(flattened_images, args.hidden_layer, activation=tf.nn.relu, name="hidden_layer")
             output_layer = tf.layers.dense(hidden_layer, self.LABELS, activation=None, name="output_layer")
             self.predictions = tf.argmax(output_layer, axis=1)
 
-            print(output_layer)
-            print(self.labels)
+            #print(output_layer)
+            #print(self.labels)
             
             # Training
             loss = tf.losses.sparse_softmax_cross_entropy(self.labels, output_layer, scope="loss")
@@ -35,18 +37,32 @@ class Network:
 
             # TODO: Create `optimizer` according to arguments ("SGD", "SGD" with momentum, or "Adam"),
             # utilizing specified learning rate according to args.learning_rate and args.learning_rate_final.
-            self.training = optimizer.minimize(loss, global_step=global_step, name="training")
-
+            #self.training = optimizer.minimize(loss, global_step=global_step, name="training")
+            
+            # Set adaptable learning rate with decay
+            self.learning_rate = args.learning_rate # init rate
+            if args.learning_rate_final:
+                decay_rate = (args.learning_rate_final / args.learning_rate)**(1 / (args.epochs - 1))
+                self.learning_rate = tf.train.exponential_decay(self.learning_rate, global_step, batches_per_epoch, decay_rate, staircase=True)
+            
+            # Choose optimizer                                              
+            if args.optimizer == "SGD" and args.momentum:
+                self.training = tf.train.MomentumOptimizer(self.learning_rate, momentum=args.momentum).minimize(loss, global_step=global_step, name="momentum")                
+            elif args.optimizer == "SGD":
+                self.training = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(loss, global_step=global_step, name="sgd")
+            else:                
+                self.training = tf.train.AdamOptimizer(self.learning_rate).minimize(loss, global_step=global_step, name="adam")
+                
             # Summaries
-            accuracy = tf.reduce_mean(tf.cast(tf.equal(self.labels, self.predictions), tf.float32))
+            self.accuracy = tf.reduce_mean(tf.cast(tf.equal(self.labels, self.predictions), tf.float32))
             summary_writer = tf.contrib.summary.create_file_writer(args.logdir, flush_millis=10 * 1000)
             self.summaries = {}
             with summary_writer.as_default(), tf.contrib.summary.record_summaries_every_n_global_steps(100):
                 self.summaries["train"] = [tf.contrib.summary.scalar("train/loss", loss),
-                                           tf.contrib.summary.scalar("train/accuracy", accuracy)]
+                                           tf.contrib.summary.scalar("train/accuracy", self.accuracy)]
             with summary_writer.as_default(), tf.contrib.summary.always_record_summaries():
                 for dataset in ["dev", "test"]:
-                    self.summaries[dataset] = tf.contrib.summary.scalar(dataset + "/accuracy", accuracy)
+                    self.summaries[dataset] = tf.contrib.summary.scalar(dataset + "/accuracy", self.accuracy)
 
             # Initialize variables
             self.session.run(tf.global_variables_initializer())
@@ -54,10 +70,11 @@ class Network:
                 tf.contrib.summary.initialize(session=self.session, graph=self.session.graph)
 
     def train(self, images, labels):
+        #return  self.session.run([self.accuracy, self.learning_rate, self.training, self.summaries["train"]], {self.images: images, self.labels: labels})
         self.session.run([self.training, self.summaries["train"]], {self.images: images, self.labels: labels})
 
     def evaluate(self, dataset, images, labels):
-        self.session.run(self.summaries[dataset], {self.images: images, self.labels: labels})
+        return self.session.run([self.accuracy, self.summaries[dataset]], {self.images: images, self.labels: labels})
 
 
 if __name__ == "__main__":
@@ -109,9 +126,11 @@ if __name__ == "__main__":
         for b in range(batches_per_epoch):
             images, labels = mnist.train.next_batch(args.batch_size)
             network.train(images, labels)
-
+            #accuracy, rate, _, _ = network.train(images, labels)
+            #print(accuracy, rate)
+            
         network.evaluate("dev", mnist.validation.images, mnist.validation.labels)
-    network.evaluate("test", mnist.test.images, mnist.test.labels)
+    accuracy, _  = network.evaluate("test", mnist.test.images, mnist.test.labels)
 
     # TODO: Compute accuracy on the test set and print it as percentage rounded
     # to two decimal places.

@@ -1,0 +1,5 @@
+!#/bin/bash
+
+PREDICTIONS=$1
+
+python morpho_eval.py --system $PREDICTIONS --gold czech-pdt-test.txt
