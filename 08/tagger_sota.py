@@ -136,7 +136,9 @@ class Network:
             #print('emb in', embedded_inputs)
             # TODO(we): Using tf.nn.bidirectional_dynamic_rnn, process the embedded inputs.
             # Use given rnn_cell (different for fwd and bwd direction) and self.sentence_lens.
-            outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell_fw=cell_fw, cell_bw=cell_bw, inputs=embedded_inputs, sequence_length=self.sentence_lens, dtype=tf.float32)
+            outputs = embedded_inputs
+            for i in range(1, args.layers):
+                outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell_fw=cell_fw, cell_bw=cell_bw, inputs=outputs, sequence_length=self.sentence_lens, dtype=tf.float32)
             #output1 = tf.nn.batch_normalization(outputs[0], training=self.is_training, name='birnn_bn1'+str(kernel_size))
             #output1 = tf.nn.relu(output1, name='birnn_relu1'+str(kernel_size))
             #output2 = tf.nn.batch_normalization(outputs[0], training=self.is_training, name='birnn_bn2'+str(kernel_size))
@@ -279,6 +281,7 @@ if __name__ == "__main__":
     parser.add_argument("--dropout", default=0, type=float, help="Dropout rate.")
     parser.add_argument("--bn", default=False, type=bool, help="Batch normalization.")
     parser.add_argument("--clip_gradient", default=None, type=float, help="Norm for gradient clipping.")
+    parser.add_argument("--layers", default=1, type=int, help="Number of rnn layers.")
     
     args = parser.parse_args()
 
