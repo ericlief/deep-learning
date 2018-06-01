@@ -169,7 +169,7 @@ class Network:
             #self.learning_rate = args.learning_rate # init rate         
             if args.learning_rate_final and args.epochs > 1:
                 decay_rate = (args.learning_rate_final / args.learning_rate)**(1 / (args.epochs - 1))
-                self.learning_rate = tf.train.exponential_decay(self.learning_rate, global_step, args.batch_size, decay_rate, staircase=True)
+                self.learning_rate = tf.train.exponential_decay(self.learning_rate, global_step, args.batch_size, decay_rate, staircase=False) # change lr each batch
             #else:
                 #self.learning_rate = args.learning_rate # init rate
                 
