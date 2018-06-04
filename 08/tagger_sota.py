@@ -346,9 +346,9 @@ if __name__ == "__main__":
 
 
     # Load the data
-    #train = morpho_dataset.MorphoDataset("czech-pdt-train.txt")
+    train = morpho_dataset.MorphoDataset("czech-pdt-train.txt")
 
-    train = morpho_dataset.MorphoDataset("train.txt")
+    #train = morpho_dataset.MorphoDataset("train.txt")
     dev = morpho_dataset.MorphoDataset("czech-pdt-dev.txt", train=train, shuffle_batches=False)
     test = morpho_dataset.MorphoDataset("czech-pdt-test.txt", train=train, shuffle_batches=False)
 
@@ -373,19 +373,19 @@ if __name__ == "__main__":
     # Predict test data
     with open("{}/tagger_sota_test.txt".format(args.logdir), "w") as test_file:
         #print(test_file)
-        #forms = test.factors[test.FORMS].strings
-        #lemmas = test.factors[test.LEMMAS].strings
-        #tags = network.predict(test, args.batch_size)
-        forms = dev.factors[dev.FORMS].strings
-        lemmas = dev.factors[dev.LEMMAS].strings        
-        tags = network.predict(dev, args.batch_size)
+        forms = test.factors[test.FORMS].strings
+        lemmas = test.factors[test.LEMMAS].strings
+        tags = network.predict(test, args.batch_size)
+        #forms = dev.factors[dev.FORMS].strings
+        #lemmas = dev.factors[dev.LEMMAS].strings        
+        #tags = network.predict(dev, args.batch_size)
 
         for s in range(len(forms)):
             for i in range(len(forms[s])):
                 form = forms[s][i]
                 lemma = lemmas[s][i]
-                #tag = test.factors[test.TAGS].words[tags[s][i]]
-                tag = dev.factors[dev.TAGS].words[tags[s][i]]
+                tag = test.factors[test.TAGS].words[tags[s][i]]
+                #tag = dev.factors[dev.TAGS].words[tags[s][i]]
 
                 print('candidates', form, lemma, tag)
 
