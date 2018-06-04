@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import numpy as np
 import tensorflow as tf
-
+import random
 import morpho_dataset
 
 class MorphoAnalyzer:
@@ -152,6 +152,7 @@ class Network:
             # store result in `output_layer`.
             output_layer = tf.layers.dense(output, num_tags) 
             #print(output_layer)
+            
             # TODO(we): Generate `self.predictions`.
             self.predictions = tf.argmax(output_layer, axis=-1) # 3rd dim!
             #print(self.predictions)
@@ -282,6 +283,7 @@ if __name__ == "__main__":
     parser.add_argument("--bn", default=False, type=bool, help="Batch normalization.")
     parser.add_argument("--clip_gradient", default=None, type=float, help="Norm for gradient clipping.")
     parser.add_argument("--layers", default=1, type=int, help="Number of rnn layers.")
+    parser.add_argument("--anal", default=False, type=bool, help="Filter output with analyzer.")
     
     args = parser.parse_args()
 
@@ -322,9 +324,33 @@ if __name__ == "__main__":
     # Predict test data
     with open("{}/tagger_sota_test.txt".format(args.logdir), "w") as test_file:
         #print(test_file)
-        forms = test.factors[test.FORMS].strings
-        tags = network.predict(test, args.batch_size)
+        #forms = test.factors[test.FORMS].strings
+        #lemmas = test.factors[test.LEMMAS].strings
+        #tags = network.predict(test, args.batch_size)
+        forms = dev.factors[dev.FORMS].strings
+        lemmas = dev.factors[dev.LEMMAS].strings        
+        tags = network.predict(dev, args.batch_size)
+        
         for s in range(len(forms)):
             for i in range(len(forms[s])):
-                print("{}\t_\t{}".format(forms[s][i], test.factors[test.TAGS].words[tags[s][i]]), file=test_file)
+                form = forms[s][i]
+                lemma = lemmas[s][i]
+                #tag = test.factors[test.TAGS].words[tags[s][i]]
+                tag = dev.factors[dev.TAGS].words[tags[s][i]]
+                
+                print('candidates', form, lemma, tag)
+                
+                dict_list  = [(analysis.lemma, analysis.tag) for analysis in analyzer_dictionary.get(form)]
+                guesser_list = [(analysis.lemma, analysis.tag) for analysis in analyzer_guesser.get(form)]
+                if args.anal and ((lemma, tag) not in dict_list or (lemma, tag) not in guesser_list):
+                    print('choosing randomly')
+                    if dict_list:
+                        lemma, tag = random.choice(dict_list)
+                    elif guesser_list:
+                        lemma, tag = random.choice(guesser_list)
+                        
+                #print("{}\t_\t{}".format(form, tag), file=test_file)
+                print("{}\t{}\t{}".format(form, lemma, tag), file=test_file)
+                
+                #print("{}\t_\t{}".format(forms[s][i], test.factors[test.TAGS].words[tags[s][i]]), file=test_file)
             print("", file=test_file)
