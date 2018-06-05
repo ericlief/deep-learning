@@ -171,13 +171,23 @@ class Network:
             loss = tf.losses.sparse_softmax_cross_entropy(labels=self.tags, logits=output_layer, weights=weights)
             global_step = tf.train.create_global_step()
 
-            self.learning_rate = tf.get_variable("learning_rate", dtype=tf.float32, initializer=args.learning_rate) 
+            #self.learning_rate = tf.get_variable("learning_rate", dtype=tf.float32, initializer=args.learning_rate) 
             #self.learning_rate = tf.Print(self.learning_rate, [self.learning_rate], message='learning rate=')
             # Set adaptable learning rate with decay
-            #self.learning_rate = args.learning_rate # init rate         
-            if args.learning_rate_final and args.epochs > 1:
-                decay_rate = (args.learning_rate_final / args.learning_rate)**(1 / (args.epochs - 1))
-                self.learning_rate = tf.train.exponential_decay(self.learning_rate, global_step, batches, decay_rate, staircase=False) # change lr each batch
+            self.learning_rate = args.learning_rate  # init rate         
+            if (args.learning_rate_final or args.decay_rate) and args.epochs > 1:
+                if not args.decay_rate:
+                    decay_rate = (args.learning_rate_final / args.learning_rate)**(1 / (args.epochs - 1))
+                else:
+                    decay_rate = args.decay_rate
+                self.learning_rate = tf.train.exponential_decay(args.learning_rate, global_step, batches, decay_rate, staircase=True) # change lr each batch
+            
+               
+                    #self.learning_rate = tf.train.exponential_decay(self.learning_rate, global_step, batches, decay_rate, staircase=False) # change lr each batch
+            
+            
+            
+            
             #else:
                 #self.learning_rate = args.learning_rate # init rate
 
@@ -314,6 +324,7 @@ if __name__ == "__main__":
     parser.add_argument("--clip_gradient", default=None, type=float, help="Norm for gradient clipping.")
     parser.add_argument("--layers", default=1, type=int, help="Number of rnn layers.")
     parser.add_argument("--anal", default=False, type=bool, help="Filter output with analyzer.")
+    parser.add_argument("--decay_rate", default=0, type=float, help="Decay rate.")
 
     args = parser.parse_args()
 
@@ -346,13 +357,18 @@ if __name__ == "__main__":
 
 
     # Load the data
-    train = morpho_dataset.MorphoDataset("czech-pdt-train.txt")
-
-    #train = morpho_dataset.MorphoDataset("train.txt")
+    
+    # Subset for sampling/testing
+    train = morpho_dataset.MorphoDataset("train.txt")
+    
+    #train = morpho_dataset.MorphoDataset("czech-pdt-train.txt")
     dev = morpho_dataset.MorphoDataset("czech-pdt-dev.txt", train=train, shuffle_batches=False)
     test = morpho_dataset.MorphoDataset("czech-pdt-test.txt", train=train, shuffle_batches=False)
 
     batches = len(train.sentence_lens) // args.batch_size
+    print('num sents', len(train.sentence_lens))
+    print('num batches', batches)
+    
     analyzer_dictionary = MorphoAnalyzer("czech-pdt-analysis-dictionary.txt")
     analyzer_guesser = MorphoAnalyzer("czech-pdt-analysis-guesser.txt")
 
@@ -387,7 +403,7 @@ if __name__ == "__main__":
                 tag = test.factors[test.TAGS].words[tags[s][i]]
                 #tag = dev.factors[dev.TAGS].words[tags[s][i]]
 
-                print('candidates', form, lemma, tag)
+                # print('candidates', form, lemma, tag)
 
                 # Use analyzer (optional)
                 if args.anal:
