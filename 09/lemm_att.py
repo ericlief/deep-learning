@@ -210,22 +210,22 @@ class Network:
             #elif args.optimizer == "SGD":
                 #optimizer = tf.train.GradientDescentOptimizer(learning_rate) 
             #else:                
-            optimizer = tf.train.AdamOptimizer(args.learning_rate) 
+            #optimizer = tf.train.AdamOptimizer(args.learning_rate) 
 
 
-            # Note how instead of `optimizer.minimize` we first get the # gradients using
-            # `optimizer.compute_gradients`, then optionally clip them and
-            # finally apply then using `optimizer.apply_gradients`.
-            gradients, variables = zip(*optimizer.compute_gradients(loss))
-            # TODO: Compute norm of gradients using `tf.global_norm` into `gradient_norm`.
-            gradient_norm = tf.global_norm(gradients) 
-            # TODO: If args.clip_gradient, clip gradients (back into `gradients`) using `tf.clip_by_global_norm`.            
-            if args.clip_gradient is not None:
-                gradients, _ = tf.clip_by_global_norm(gradients, clip_norm=args.clip_gradient, use_norm=gradient_norm)
-            self.training = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step)
+            ## Note how instead of `optimizer.minimize` we first get the # gradients using
+            ## `optimizer.compute_gradients`, then optionally clip them and
+            ## finally apply then using `optimizer.apply_gradients`.
+            #gradients, variables = zip(*optimizer.compute_gradients(loss))
+            ## TODO: Compute norm of gradients using `tf.global_norm` into `gradient_norm`.
+            #gradient_norm = tf.global_norm(gradients) 
+            ## TODO: If args.clip_gradient, clip gradients (back into `gradients`) using `tf.clip_by_global_norm`.            
+            #if args.clip_gradient is not None:
+                #gradients, _ = tf.clip_by_global_norm(gradients, clip_norm=args.clip_gradient, use_norm=gradient_norm)
+            #self.training = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step)
 
             
-            #self.training = tf.train.AdamOptimizer().minimize(loss, global_step=global_step, name="training")
+            self.training = tf.train.AdamOptimizer().minimize(loss, global_step=global_step, name="training")
 
             # Summaries
             accuracy_training = tf.reduce_all(tf.logical_or(
@@ -272,24 +272,37 @@ class Network:
                  self.source_seqs: charseqs[train.FORMS], self.target_seqs: charseqs[train.LEMMAS],
                  self.source_seq_lens: charseq_lens[train.FORMS], self.target_seq_lens: charseq_lens[train.LEMMAS]})
 
-            form, gold_lemma, system_lemma = "", "", ""
-            for i in range(charseq_lens[train.FORMS][0]):
-                form += train.factors[train.FORMS].alphabet[charseqs[train.FORMS][0][i]]
-            for i in range(charseq_lens[train.LEMMAS][0]):
-                gold_lemma += train.factors[train.LEMMAS].alphabet[charseqs[train.LEMMAS][0][i]]
-                system_lemma += train.factors[train.LEMMAS].alphabet[predictions[0][i]]
+            #form, gold_lemma, system_lemma = "", "", ""
+            #for i in range(charseq_lens[train.FORMS][0]):
+                #form += train.factors[train.FORMS].alphabet[charseqs[train.FORMS][0][i]]
+            #for i in range(charseq_lens[train.LEMMAS][0]):
+                #gold_lemma += train.factors[train.LEMMAS].alphabet[charseqs[train.LEMMAS][0][i]]
+                #system_lemma += train.factors[train.LEMMAS].alphabet[predictions[0][i]]
             
             #print("Gold form: {}, gold lemma: {}, predicted lemma: {}".format(form, gold_lemma, system_lemma), file=sys.stderr)
 
     def evaluate(self, dataset_name, dataset, batch_size):
+        import sys
+        
         self.session.run(self.reset_metrics)
         while not dataset.epoch_finished():
             sentence_lens, _, charseq_ids, charseqs, charseq_lens = dataset.next_batch(batch_size, including_charseqs=True)
-            self.session.run([self.update_accuracy, self.update_loss],
+            predictions, _, _ = self.session.run([self.predictions, self.update_accuracy, self.update_loss],
                              {self.sentence_lens: sentence_lens,
                               self.source_ids: charseq_ids[train.FORMS], self.target_ids: charseq_ids[train.LEMMAS],
                               self.source_seqs: charseqs[train.FORMS], self.target_seqs: charseqs[train.LEMMAS],
                               self.source_seq_lens: charseq_lens[train.FORMS], self.target_seq_lens: charseq_lens[train.LEMMAS]})
+        
+            form, gold_lemma, system_lemma = "", "", ""
+            for i in range(charseq_lens[train.FORMS][0]):
+                form += dataset.factors[train.FORMS].alphabet[charseqs[train.FORMS][0][i]]
+            for i in range(charseq_lens[train.LEMMAS][0]):
+                gold_lemma += dataset.factors[train.LEMMAS].alphabet[charseqs[train.LEMMAS][0][i]]
+                system_lemma += dataset.factors[train.LEMMAS].alphabet[predictions[0][i]]
+            
+            print("Gold form: {}, gold lemma: {}, predicted lemma: {}".format(form, gold_lemma, system_lemma), file=sys.stderr)
+        
+        
         return self.session.run([self.current_accuracy, self.summaries[dataset_name]])[0]
 
 
@@ -304,14 +317,14 @@ if __name__ == "__main__":
 
     # Parse arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("--batch_size", default=64, type=int, help="Batch size.")
-    parser.add_argument("--char_dim", default=256, type=int, help="Character embedding dimension.")
-    parser.add_argument("--rnn_dim", default=256, type=int, help="Dimension of the encoder and the decoder.")
+    parser.add_argument("--batch_size", default=10, type=int, help="Batch size.")
+    parser.add_argument("--char_dim", default=64, type=int, help="Character embedding dimension.")
+    parser.add_argument("--rnn_dim", default=64, type=int, help="Dimension of the encoder and the decoder.")
     parser.add_argument("--epochs", default=10, type=int, help="Number of epochs.")
-    parser.add_argument("--recodex", default=True, action="store_true", help="ReCodEx mode.")
+    parser.add_argument("--recodex", default=False, action="store_true", help="ReCodEx mode.")
     parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
     parser.add_argument("--optimizer", default="Adam", type=str, help="Optimizer.")    
-    parser.add_argument("--learning_rate", default=0.0001, type=float, help="Initial learning rate.") 
+    parser.add_argument("--learning_rate", default=0.001, type=float, help="Initial learning rate.") 
     parser.add_argument("--learning_rate_final", default=None, type=float, help="Final learning rate.")    
     parser.add_argument("--momentum", default=None, type=float, help="Momentum.")
     parser.add_argument("--dropout", default=0, type=float, help="Dropout rate.")
