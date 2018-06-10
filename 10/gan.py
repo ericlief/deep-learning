@@ -51,14 +51,17 @@ class Network:
                 # - flattening layer
                 # - dense layer with 128 neurons and ReLU activation
                 # - dense layer with 1 neuron without activation
+                print('discrim img', images)
                 images = tf.layers.flatten(images, name='flatten')
+                print('flat', images)
                 output = tf.layers.dense(images, 128, tf.nn.relu)
-                output = tf.layers.dense(output, 1) # images [batch, dim=prob]  
-                
+                logits = tf.layers.dense(output, 1) # images [batch, dim=prob]  
+                print('logits', logits)
                 # Consider the last hidden layer output to be the logit of whether the input
                 # images comes from real data. Change its shape to remove the last dimension
                 # (i.e., [batch_size] instead of [batch_size, 1]) and return it.
-                return tf.squeeze(output) # [batch, dim=prob] -> [probs]
+                probs = tf.squeeze(logits)
+                return probs # [batch, dim=prob] -> [probs]
             
             with tf.variable_scope("discriminator"):
                 # TODO: Define `discriminator_logit_real` as a result of
