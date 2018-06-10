@@ -115,7 +115,7 @@ class Network:
                 # Apply batch norm
                 if args.bn:
                     output = tf.layers.batch_normalization(output, training=self.is_training, name='cnn_layer_BN_'+str(kernel_size))
-                output = tf.nn.relu(output, name='cnn_layer_relu_'+str(kernel_size))
+                #output = tf.nn.relu(output, name='cnn_layer_relu_'+str(kernel_size))
                 pooling = tf.reduce_max(output, axis=1)
 
                 #print(pooling)
@@ -174,13 +174,16 @@ class Network:
             #self.learning_rate = tf.get_variable("learning_rate", dtype=tf.float32, initializer=args.learning_rate) 
             #self.learning_rate = tf.Print(self.learning_rate, [self.learning_rate], message='learning rate=')
             # Set adaptable learning rate with decay
-            self.learning_rate = args.learning_rate  # init rate         
-            if (args.learning_rate_final or args.decay_rate) and args.epochs > 1:
-                if not args.decay_rate:
+            learning_rate = args.learning_rate  # init rate         
+            if args.learning_rate_final and args.epochs > 1:
+                # Polynomial decay
+                if not args.decay_rate: 
                     decay_rate = (args.learning_rate_final / args.learning_rate)**(1 / (args.epochs - 1))
+                    learning_rate = tf.train.polynomial_decay(args.learning_rate, global_step, batches, decay_rate, staircase=True) # change lr each batch
+                # Exponential decay
                 else:
                     decay_rate = args.decay_rate
-                self.learning_rate = tf.train.exponential_decay(args.learning_rate, global_step, batches, decay_rate, staircase=True) # change lr each batch
+                    learning_rate = tf.train.exponential_decay(args.learning_rate, global_step, batches, decay_rate, staircase=True) # change lr each batch
             
                
                     #self.learning_rate = tf.train.exponential_decay(self.learning_rate, global_step, batches, decay_rate, staircase=False) # change lr each batch
@@ -193,12 +196,12 @@ class Network:
 
             # Choose optimizer                                              
             if args.optimizer == "SGD" and args.momentum:
-                optimizer = tf.train.MomentumOptimizer(self.learning_rate, momentum=args.momentum) 
-                self.training = tf.train.GradientDescentOptimizer(self.learning_rate) 
+                optimizer = tf.train.MomentumOptimizer(learning_rate, momentum=args.momentum) 
+                self.training = tf.train.GradientDescentOptimizer(learning_rate) 
             elif args.optimizer == "SGD":
-                optimizer = tf.train.GradientDescentOptimizer(self.learning_rate) 
+                optimizer = tf.train.GradientDescentOptimizer(learning_rate) 
             else:                
-                optimizer = tf.train.AdamOptimizer(self.learning_rate) 
+                optimizer = tf.train.AdamOptimizer(learning_rate) 
 
 
             # Note how instead of `optimizer.minimize` we first get the # gradients using
@@ -306,8 +309,8 @@ if __name__ == "__main__":
     # Parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", default=10, type=int, help="Batch size.")
-    parser.add_argument("--cle_dim", default=32, type=int, help="Character-level embedding dimension.")
-    parser.add_argument("--cnne_filters", default=16, type=int, help="CNN embedding filters per length.")
+    parser.add_argument("--cle_dim", default=64, type=int, help="Character-level embedding dimension.")
+    parser.add_argument("--cnne_filters", default=32, type=int, help="CNN embedding filters per length.")
     parser.add_argument("--optimizer", default="Adam", type=str, help="Optimizer.")    
     parser.add_argument("--cnne_max", default=4, type=int, help="Maximum CNN filter length.")
     parser.add_argument("--epochs", default=10, type=int, help="Number of epochs.")
@@ -359,9 +362,10 @@ if __name__ == "__main__":
     # Load the data
     
     # Subset for sampling/testing
-    train = morpho_dataset.MorphoDataset("train.txt")
+
+    #Train = Morpho_dataset.MorphoDataset("train.txt")
     
-    #train = morpho_dataset.MorphoDataset("czech-pdt-train.txt")
+    train = morpho_dataset.MorphoDataset("czech-pdt-train.txt")
     dev = morpho_dataset.MorphoDataset("czech-pdt-dev.txt", train=train, shuffle_batches=False)
     test = morpho_dataset.MorphoDataset("czech-pdt-test.txt", train=train, shuffle_batches=False)
 
