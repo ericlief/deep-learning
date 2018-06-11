@@ -109,7 +109,7 @@ class Network:
                 
                 # Sum the two above projections, apply tf.tanh and project the result using weight_layer.
                 # The result has shape [x, y, 1]. 
-                score = tf.nn.tanh(source_layer + state_layer) # = e tanh(Vh_j + Ws + b) = (?,?,64) = (w, c, dim)
+                score = tf.nn.tanh(source_layer_projection + state_layer_projection) # = e tanh(Vh_j + Ws + b) = (?,?,64) = (w, c, dim)
                 print('score or e <= 1', score)
                 # weight_layer = tf.layers.dense(score, 1)  # weight layer with 1 unit 
                 weight_layer_projection = weight_layer(score)
@@ -135,7 +135,7 @@ class Network:
                     #self.target_embeddings = target_embeddings
             
                 @property
-                def batch_size(self): return batch_sz # TODO: Return size of the batch, using for example source_states size
+                def batch_size(self): return tf.shape(source_states)[0] # TODO: Return size of the batch, using for example source_states size
                 @property
                 def output_dtype(self): return tf.float32 # Type for logits of target characters
                 @property
@@ -161,7 +161,7 @@ class Network:
                     print('outputs from decoder layer', outputs)
                     # Next input are words with index `time` in target_embedded.# TODO: 
                     # Embed `outputs` using target_embeddings and pass it to with_attention.
-                    next_inputs = embedded_target[:, time, :]
+                    next_inputs = embedded_target[:, time]
                     next_inputs = with_attention(next_inputs, states)
                     
                     # TODO: False if target_lens > time + 1, True otherwise.
