@@ -46,14 +46,14 @@ class Network:
             # using forward RNN and store the resulting states into `source_states`.
             encoder_cell = tf.nn.rnn_cell.GRUCell(args.rnn_dim)
             _, source_states = tf.nn.dynamic_rnn(encoder_cell, embedded_source, self.source_seq_lens, dtype=tf.float32, scope='encoder')
-            print('source states', source_states, 'batch size', tf.shape(source_states)[0]) # (?, 64) = encoded seq embedding 
+            print('source states', source_states, 'batch size', tf.shape(source_states)[0]) # (?, 200) = encoded seq/ word embedding, this is the state not output, i.e. (words, 64)
             
             # Index the unique words using self.source_ids and self.target_ids.
             sentence_mask = tf.sequence_mask(self.sentence_lens)
             print('mask', sentence_mask)
-            print(tf.nn.embedding_lookup(source_states, self.source_ids)) # (,?,?,64) i.e. sent > word > we
+            print(tf.nn.embedding_lookup(source_states, self.source_ids)) # (,?,?,200) i.e. sent > word > we
             source_states = tf.boolean_mask(tf.nn.embedding_lookup(source_states, self.source_ids), sentence_mask)
-            print(source_states) # (?, 64) = char dim
+            print(source_states) # (?, 200) = word, rnn_dim/encoding
             
             source_lens = tf.boolean_mask(tf.nn.embedding_lookup(self.source_seq_lens, self.source_ids), sentence_mask)
             print(source_lens)
@@ -112,8 +112,8 @@ class Network:
                     print('outputs', outputs)
                     # TODO: Apply the decoder_layer on outputs.       
                     outputs = decoder_layer(outputs)  # now dim = alphabet  
-                    pred = tf.argmax(outputs, axis=-1, output_type=tf.int32)
-                    print('step', outputs, pred)
+                    #pred = tf.argmax(outputs, axis=-1, output_type=tf.int32)
+                    print('step', outputs)
                     # TODO: Next input are words with index `time` in target_embedded.
                     next_inputs = embedded_target[:, time, :]
                     # TODO: False if target_lens > time + 1, True otherwise.
@@ -154,14 +154,15 @@ class Network:
                     outputs, states = decoder_cell(inputs, states) # logits 
                     outputs = decoder_layer(outputs)  # now dim = alphabet            
                     # TODO: Use tf.argmax to choose most probable class (supply parameter `output_type=tf.int32`).
-                    pred = tf.argmax(outputs, axis=-1, output_type=tf.int32)
+                    outputs = tf.argmax(outputs, axis=-1, output_type=tf.int32)
                     # TODO: Embed `outputs` using target_embeddings
-                    next_input = tf.nn.embedding_lookup(target_embeddings, pred)
-                    finished = tf.equal(pred, eow) # TODO: True where outputs==eow, False otherwise
+                    next_input = tf.nn.embedding_lookup(target_embeddings, outputs)
+                    finished = tf.equal(outputs, eow) # TODO: True where outputs==eow, False otherwise
                     return outputs, states, next_input, finished
             self.predictions, _, self.prediction_lens = tf.contrib.seq2seq.dynamic_decode(
                 DecoderPrediction(), maximum_iterations=tf.reduce_max(source_lens) + 10)
- 
+            #self.predictions = self.predictions[0]
+            
             # Training
             weights = tf.sequence_mask(target_lens, dtype=tf.float32)
             loss = tf.losses.sparse_softmax_cross_entropy(target_seqs, output_layer, weights=weights)
