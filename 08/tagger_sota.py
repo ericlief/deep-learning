@@ -170,50 +170,48 @@ class Network:
             # use `weights` parameter to mask-out invalid words.
             loss = tf.losses.sparse_softmax_cross_entropy(labels=self.tags, logits=output_layer, weights=weights)
             global_step = tf.train.create_global_step()
-
+            
+            self.training = tf.train.AdamOptimizer().minimize(loss, global_step=global_step, name="training")
+            
             #self.learning_rate = tf.get_variable("learning_rate", dtype=tf.float32, initializer=args.learning_rate) 
             #self.learning_rate = tf.Print(self.learning_rate, [self.learning_rate], message='learning rate=')
+            
             # Set adaptable learning rate with decay
-            learning_rate = args.learning_rate  # init rate         
-            if args.learning_rate_final and args.epochs > 1:
-                # Polynomial decay
-                if not args.decay_rate: 
-                    decay_rate = (args.learning_rate_final / args.learning_rate)**(1 / (args.epochs - 1))
-                    learning_rate = tf.train.polynomial_decay(args.learning_rate, global_step, batches, decay_rate, staircase=True) # change lr each batch
-                # Exponential decay
-                else:
-                    decay_rate = args.decay_rate
-                    learning_rate = tf.train.exponential_decay(args.learning_rate, global_step, batches, decay_rate, staircase=True) # change lr each batch
+            #learning_rate = args.learning_rate  # init rate         
+            #if args.learning_rate_final and args.epochs > 1:
+                ## Polynomial decay
+                #if not args.decay_rate: 
+                    #decay_rate = (args.learning_rate_final / args.learning_rate)**(1 / (args.epochs - 1))
+                    #learning_rate = tf.train.polynomial_decay(args.learning_rate, global_step, batches, decay_rate, staircase=True) # change lr each batch
+                ## Exponential decay
+                #else:
+                    #decay_rate = args.decay_rate
+                    #learning_rate = tf.train.exponential_decay(args.learning_rate, global_step, batches, decay_rate, staircase=True) # change lr each batch
             
                
-                    #self.learning_rate = tf.train.exponential_decay(self.learning_rate, global_step, batches, decay_rate, staircase=False) # change lr each batch
+                    ##self.learning_rate = tf.train.exponential_decay(self.learning_rate, global_step, batches, decay_rate, staircase=False) # change lr each batch
             
-            
-            
-            
-            #else:
-                #self.learning_rate = args.learning_rate # init rate
-
-            # Choose optimizer                                              
-            if args.optimizer == "SGD" and args.momentum:
-                optimizer = tf.train.MomentumOptimizer(learning_rate, momentum=args.momentum) 
-                self.training = tf.train.GradientDescentOptimizer(learning_rate) 
-            elif args.optimizer == "SGD":
-                optimizer = tf.train.GradientDescentOptimizer(learning_rate) 
-            else:                
-                optimizer = tf.train.AdamOptimizer(learning_rate) 
+       
+            ## Choose optimizer                                              
+            #if args.optimizer == "SGD" and args.momentum:
+                #optimizer = tf.train.MomentumOptimizer(learning_rate, momentum=args.momentum) 
+                #self.training = tf.train.GradientDescentOptimizer(learning_rate) 
+            #elif args.optimizer == "SGD":
+                #optimizer = tf.train.GradientDescentOptimizer(learning_rate) 
+            #else:                
+                #optimizer = tf.train.AdamOptimizer(learning_rate) 
 
 
-            # Note how instead of `optimizer.minimize` we first get the # gradients using
-            # `optimizer.compute_gradients`, then optionally clip them and
-            # finally apply then using `optimizer.apply_gradients`.
-            gradients, variables = zip(*optimizer.compute_gradients(loss))
-            # TODO: Compute norm of gradients using `tf.global_norm` into `gradient_norm`.
-            gradient_norm = tf.global_norm(gradients) 
-            # TODO: If args.clip_gradient, clip gradients (back into `gradients`) using `tf.clip_by_global_norm`.            
-            if args.clip_gradient is not None:
-                gradients, _ = tf.clip_by_global_norm(gradients, clip_norm=args.clip_gradient, use_norm=gradient_norm)
-            self.training = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step)
+            ## Note how instead of `optimizer.minimize` we first get the # gradients using
+            ## `optimizer.compute_gradients`, then optionally clip them and
+            ## finally apply then using `optimizer.apply_gradients`.
+            #gradients, variables = zip(*optimizer.compute_gradients(loss))
+            ## TODO: Compute norm of gradients using `tf.global_norm` into `gradient_norm`.
+            #gradient_norm = tf.global_norm(gradients) 
+            ## TODO: If args.clip_gradient, clip gradients (back into `gradients`) using `tf.clip_by_global_norm`.            
+            #if args.clip_gradient is not None:
+                #gradients, _ = tf.clip_by_global_norm(gradients, clip_norm=args.clip_gradient, use_norm=gradient_norm)
+            #self.training = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step)
 
 
             # Summaries
@@ -225,8 +223,11 @@ class Network:
             self.summaries = {}
             with summary_writer.as_default(), tf.contrib.summary.record_summaries_every_n_global_steps(10):
                 self.summaries["train"] = [tf.contrib.summary.scalar("train/loss", self.update_loss),
-                                           tf.contrib.summary.scalar("train/gradient_norm", gradient_norm),
                                            tf.contrib.summary.scalar("train/accuracy", self.update_accuracy)]
+            #with summary_writer.as_default(), tf.contrib.summary.record_summaries_every_n_global_steps(10):
+                #self.summaries["train"] = [tf.contrib.summary.scalar("train/loss", self.update_loss),
+                                           #tf.contrib.summary.scalar("train/gradient_norm", gradient_norm),
+                                           #tf.contrib.summary.scalar("train/accuracy", self.update_accuracy)]            
             with summary_writer.as_default(), tf.contrib.summary.always_record_summaries():
                 for dataset in ["dev", "test"]:
                     self.summaries[dataset] = [tf.contrib.summary.scalar(dataset + "/loss", self.current_loss),
@@ -281,7 +282,7 @@ if __name__ == "__main__":
     import re
 
 
-    def find_analysis(form, tag):
+    def find_analysis_tag(form, tag):
 
         # Get tags for form in analyzer and guesser lists
         dict_tag_list = [analysis.tag for analysis in analyzer_dictionary.get(form)]
@@ -300,20 +301,17 @@ if __name__ == "__main__":
         return max(tag_probs, key=tag_probs.get)
 
 
-
-
-
     # Fix random seed
     np.random.seed(42)
 
     # Parse arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("--batch_size", default=10, type=int, help="Batch size.")
+    parser.add_argument("--batch_size", default=50, type=int, help="Batch size.")
     parser.add_argument("--cle_dim", default=64, type=int, help="Character-level embedding dimension.")
     parser.add_argument("--cnne_filters", default=32, type=int, help="CNN embedding filters per length.")
     parser.add_argument("--optimizer", default="Adam", type=str, help="Optimizer.")    
     parser.add_argument("--cnne_max", default=4, type=int, help="Maximum CNN filter length.")
-    parser.add_argument("--epochs", default=10, type=int, help="Number of epochs.")
+    parser.add_argument("--epochs", default=5, type=int, help="Number of epochs.")
     parser.add_argument("--recodex", default=False, action="store_true", help="ReCodEx mode.")
     parser.add_argument("--rnn_cell", default="LSTM", type=str, help="RNN cell type.")
     parser.add_argument("--rnn_cell_dim", default=64, type=int, help="RNN cell dimension.")
@@ -411,7 +409,7 @@ if __name__ == "__main__":
 
                 # Use analyzer (optional)
                 if args.anal:
-                    tag = find_analysis(form, tag)
+                    tag = find_analysis_tag(form, tag)
 
 
                 #print("{}\t_\t{}".format(form, tag), file=test_file)
