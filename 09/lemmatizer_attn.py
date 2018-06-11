@@ -87,8 +87,8 @@ class Network:
             # - `source_layer` with args.rnn_dim units
             # - `state_layer` with args.rnn_dim unitssource_encoded
             # - `weight_layer` with 1 unit
-            source_layer = tf.layers.Dense(rnn_dim)
-            state_layer = tf.layers.Dense(rnn_dim)
+            source_layer = tf.layers.Dense(args.rnn_dim)
+            state_layer = tf.layers.Dense(args.rnn_dim)
             weight_layer = tf.layers.Dense(1)            
             def with_attention(inputs, states):
                 # Generate the attention
