@@ -37,7 +37,7 @@ class Network:
                 # individual pixels. Reshape them into a correct shape for a grayscale
                 # image of size self.WIDTH x self.HEIGHT and return them.
                 generated_images = tf.reshape(logits, [-1, self.HEIGHT, self.WIDTH, 1])
-                print('generated img', generated_images)
+                #print('generated img', generated_images)
                 return tf.reshape(logits, [-1, self.HEIGHT, self.WIDTH, 1]) # [?, H, W]
             
             with tf.variable_scope("generator"):
@@ -51,17 +51,22 @@ class Network:
                 # - flattening layer
                 # - dense layer with 128 neurons and ReLU activation
                 # - dense layer with 1 neuron without activation
-                print('discrim img', images)
+                #print('discrim img', images)
                 images = tf.layers.flatten(images, name='flatten')
-                print('flat', images)
+                #print('flat', images)
                 output = tf.layers.dense(images, 128, tf.nn.relu)
                 logits = tf.layers.dense(output, 1) # images [batch, dim=prob]  
-                print('logits', logits)
+                #print('logits', logits)
+                
                 # Consider the last hidden layer output to be the logit of whether the input
                 # images comes from real data. Change its shape to remove the last dimension
                 # (i.e., [batch_size] instead of [batch_size, 1]) and return it.
-                probs = tf.squeeze(logits)
-                return probs # [batch, dim=prob] -> [probs]
+                
+                #self.probs = tf.squeeze(logits)
+                self.probs = tf.reshape(logits, [-1])
+                
+                #print('probs', self.probs)
+                return self.probs # [batch, dim=prob] -> [probs]
             
             with tf.variable_scope("discriminator"):
                 # TODO: Define `discriminator_logit_real` as a result of
@@ -86,10 +91,10 @@ class Network:
                                     #tf.losses.sigmoid_cross_entropy(tf.zeros(self.images.get_shape().as_list()[0]), discriminator_logit_fake) 
             self.discriminator_loss = tf.losses.sigmoid_cross_entropy(tf.ones(args.batch_size), discriminator_logit_real) + \
                                     tf.losses.sigmoid_cross_entropy(tf.zeros(args.batch_size), discriminator_logit_fake)             
-            # loss with gold labels of ones (1.0) and discriminator_logit_fake.
             #self.generator_loss = tf.losses.sigmoid_cross_entropy(tf.ones(self.images.get_shape().as_list()[0]), discriminator_logit_fake)
             
             # TODO: Define `self.generator_loss` as a sigmoid cross entropy
+            # loss with gold labels of ones (1.0) and discriminator_logit_fake.            
             self.generator_loss = tf.losses.sigmoid_cross_entropy(tf.ones(args.batch_size), discriminator_logit_fake)
             
             # Training
@@ -132,11 +137,14 @@ class Network:
         # TODO: In first self.session.run, evaluate self.discriminator_training,
         # self.discriminator_summary and self.discriminator_loss using
         # `images` as `self.images` and noise sampled with `self.sample_z` as `self.z`.
-        _, discriminator_loss = self.session.run([self.discriminator_training, self.discriminator_loss], {self.images: images, self.z: self.sample_z(args.batch_size)})
+        gen_img, _, discriminator_loss = self.session.run([self.generated_images, self.discriminator_training, self.discriminator_loss], {self.images: images, self.z: self.sample_z(args.batch_size)})
         #_, discriminator_loss = self.session.run([self.discriminator_training, self.discriminator_loss], {self.images: images, self.z: self.sample_z(args.batch_size)})
         # TODO: In second self.session.run, evaluate self.generator_training,
         # self.generator_summary and self.generator_loss using
         # noise sampled with `self.sample_z` as `self.z`.
+        #Print('Discrim Probs', Probs)
+        print('gen inm', gen_img)
+        
         _, _, generator_loss = self.session.run([self.generator_training, self.generator_summary, self.generator_loss], {self.images: images, self.z: self.sample_z(args.batch_size)})
 
         # TODO: Return the sum of evaluated self.discriminator_loss and self.generator_loss.
@@ -220,11 +228,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", default=50, type=int, help="Batch size.")
     parser.add_argument("--dataset", default="mnist-data", type=str, help="Dataset [fashion|cifar-cars|mnist-data].")
-    parser.add_argument("--epochs", default=100, type=int, help="Number of epochs.")
+    parser.add_argument("--epochs", default=50, type=int, help="Number of epochs.") # was 100
     parser.add_argument("--recodex", default=False, action="store_true", help="ReCodEx mode.")
     parser.add_argument("--recodex_validation_size", default=None, type=int, help="Validation size in ReCodEx mode.")
     parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
-    parser.add_argument("--z_dim", default=100, type=int, help="Dimension of Z.")
+    parser.add_argument("--z_dim", default=50, type=int, help="Dimension of Z.") # was 100
     args = parser.parse_args()
 
     # Create logdir name
