@@ -45,7 +45,8 @@ class Network:
             # `z_log_variance` / 2 to an exponential function.
             z_st = tf.exp(z_log_variance / 2)
             # TODO: Compute `epsilon` as a random normal noise, with a shape of `z_mean`.
-            epsilon = tf.random_normal(z_mean)
+            print('shape', z_mean.shape.as_list()[1], args.z_dim)
+            epsilon = tf.random_normal(tf.shape(z_mean))
             # TODO: Compute `self.z` by drawing from normal distribution with
             # mean `z_mean` and standard deviation `z_sd` (utilizing the `epsilon` noise).
             self.z =  z_mean + z_st * epsilon
@@ -78,12 +79,12 @@ class Network:
             # TODO: Define `reconstruction_loss` as    sigmoid cross entropy
             # loss of `self.images` and `generated_logits`, ** not images, because SCE applies the sigmoid 
             # to the logits
-            reconstruction_loss = tf.losses.sigmoid_cross_entropy(self.images, self.generated_logits)
+            reconstruction_loss = tf.losses.sigmoid_cross_entropy(self.images, generated_logits)
             
             # TODO: Define `latent_loss` as a mean of KL-divergences of normal distributions
             # N(z_mean, z_sd) and N(0, 1), utilizing `tf.distributions.kl_divergence`
             # and `tf.distributions.Normal`.
-            latent_loss = tf.reduce.mean(tf.distributions.kl_divergence(tf.distributions.Normal(z_mean, z_st), tf.distributions.Normal(0,1)))
+            latent_loss = tf.reduce_mean(tf.distributions.kl_divergence(tf.distributions.Normal(z_mean, z_st), tf.distributions.Normal(0.0,1.0)))
             
             # TODO: Define `self.loss` as a weighted sum of
             # reconstruction_loss (weight is the number of pixels in an image)
