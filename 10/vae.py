@@ -28,50 +28,68 @@ class Network:
                 # - flattening layer
                 # - dense layer with 500 neurons and ReLU activation
                 # - dense layer with 500 neurons and ReLU activation
-                #
+                flat = tf.layers.flatten(image)
+                dense1 = tf.layers.dense(flat, 500, tf.nn.relu)
+                dense2 = tf.layers.dense(dense1, 500, tf.nn.relu)
                 # Using the last hidden layer output, produce two vectors of size self.z_dim,
                 # using two dense layers without activation, the first being `z_mean` and the second
                 # `z_log_variance`.
+                z_mean = tf.layers.dense(dense2, self.z_dim)
+                z_log_variance = tf.layers.dense(dense2, self.z_dim)
+                print('z mean, z var=', z_mean, z_log_variance)
                 return z_mean, z_log_variance
 
             z_mean, z_log_variance = encoder(self.images)
-
+            
             # TODO: Compute `z_sd` as a standard deviation from `z_log_variance`, by passing
             # `z_log_variance` / 2 to an exponential function.
-
+            z_st = tf.exp(z_log_variance / 2)
             # TODO: Compute `epsilon` as a random normal noise, with a shape of `z_mean`.
-
+            epsilon = tf.random_normal(z_mean)
             # TODO: Compute `self.z` by drawing from normal distribution with
             # mean `z_mean` and standard deviation `z_sd` (utilizing the `epsilon` noise).
-
+            self.z =  z_mean + z_st * epsilon
+            print('z', self.z)
+            
             # Decoder
             def decoder(z):
                 # TODO: Define a decoder as a sequence of:
                 # - dense layer with 500 neurons and ReLU activation
                 # - dense layer with 500 neurons and ReLU activation
-                # - dense layer with as many neurons as there are pixels in an image
-                #
+                # - dense layer with as many neurons as there are pixels in an image **activation?
+                dense1 = tf.layers.dense(z, 500, tf.nn.relu)
+                dense2 = tf.layers.dense(dense1, 500, tf.nn.relu)
+                dense3 = tf.layers.dense(dense2, self.HEIGHT * self.WIDTH)
+               
                 # Consider the output of the last hidden layer to be the logits of
                 # individual pixels. Reshape them into a correct shape for a grayscale
                 # image of size self.WIDTH x self.HEIGHT and return them.
+                logits = tf.reshape(dense3, [-1, self.HEIGHT, self.WIDTH, 1])
+                print('decoder logits out', logits)
+                return logits
 
             generated_logits = decoder(self.z)
 
             # TODO: Define `self.generated_images` as generated_logits passed through a sigmoid.
-
+            self.generated_images = tf.nn.sigmoid(generated_logits)
+            
             # Loss and training
 
-            # TODO: Define `reconstruction_loss` as a sigmoid cross entropy
-            # loss of `self.images` and `generated_logits`.
-
+            # TODO: Define `reconstruction_loss` as    sigmoid cross entropy
+            # loss of `self.images` and `generated_logits`, ** not images, because SCE applies the sigmoid 
+            # to the logits
+            reconstruction_loss = tf.losses.sigmoid_cross_entropy(self.images, self.generated_logits)
+            
             # TODO: Define `latent_loss` as a mean of KL-divergences of normal distributions
             # N(z_mean, z_sd) and N(0, 1), utilizing `tf.distributions.kl_divergence`
             # and `tf.distributions.Normal`.
-
+            latent_loss = tf.reduce.mean(tf.distributions.kl_divergence(tf.distributions.Normal(z_mean, z_st), tf.distributions.Normal(0,1)))
+            
             # TODO: Define `self.loss` as a weighted sum of
             # reconstruction_loss (weight is the number of pixels in an image)
             # and latent_loss (weight is the dimensionality of the latent variable z).
-
+            self.loss = (self.HEIGHT * self.WIDTH) * reconstruction_loss + self.z_dim * latent_loss
+            
             global_step = tf.train.create_global_step()
             self.training = tf.train.AdamOptimizer().minimize(self.loss, global_step=global_step, name="training")
 

@@ -89,13 +89,16 @@ class Network:
             # - sigmoid cross entropy loss with gold labels of zeros (0.0) and discriminator_logit_fake
             #self.discrimator_loss = tf.losses.sigmoid_cross_entropy(tf.ones(self.images.get_shape().as_list()[0]), discriminator_logit_real) + \
                                     #tf.losses.sigmoid_cross_entropy(tf.zeros(self.images.get_shape().as_list()[0]), discriminator_logit_fake) 
-            self.discriminator_loss = tf.losses.sigmoid_cross_entropy(tf.ones(args.batch_size), discriminator_logit_real) + \
-                                    tf.losses.sigmoid_cross_entropy(tf.zeros(args.batch_size), discriminator_logit_fake)             
+            #self.discriminator_loss = tf.losses.sigmoid_cross_entropy(tf.ones(args.batch_size), discriminator_logit_real) + \
+                                    #tf.losses.sigmoid_cross_entropy(tf.zeros(args.batch_size), discriminator_logit_fake)             
+            self.discriminator_loss = (tf.losses.sigmoid_cross_entropy(tf.ones(tf.shape(discriminator_logit_real)), discriminator_logit_real)
+                                       + tf.losses.sigmoid_cross_entropy(tf.zeros(tf.shape(discriminator_logit_fake)), discriminator_logit_fake))
             #self.generator_loss = tf.losses.sigmoid_cross_entropy(tf.ones(self.images.get_shape().as_list()[0]), discriminator_logit_fake)
             
             # TODO: Define `self.generator_loss` as a sigmoid cross entropy
             # loss with gold labels of ones (1.0) and discriminator_logit_fake.            
-            self.generator_loss = tf.losses.sigmoid_cross_entropy(tf.ones(args.batch_size), discriminator_logit_fake)
+            #self.generator_loss = tf.losses.sigmoid_cross_entropy(tf.ones(args.batch_size), discriminator_logit_fake)
+            self.generator_loss = tf.losses.sigmoid_cross_entropy(tf.ones(tf.shape(discriminator_logit_fake)), discriminator_logit_fake)
             
             # Training
             global_step = tf.train.create_global_step()
@@ -107,7 +110,7 @@ class Network:
             # TODO: Create `self.generator_training` as an AdamOptimizer.minimize
             # for generator_loss and variables in "generator" namespace.
             # This time *do* pass global_step as argument to AdamOptimizer.minimize.
-            self.generator_training = tf.train.AdamOptimizer().minimize(self.generator_loss, global_step)
+            self.generator_training = tf.train.AdamOptimizer().minimize(self.generator_loss, global_step, var_list=tf.global_variables("generator"))
 
             # Summaries
             discriminator_accuracy = tf.reduce_mean(tf.to_float(tf.concat([
@@ -143,7 +146,7 @@ class Network:
         # self.generator_summary and self.generator_loss using
         # noise sampled with `self.sample_z` as `self.z`.
         #Print('Discrim Probs', Probs)
-        print('gen inm', gen_img)
+        #print('gen inm', gen_img)
         
         _, _, generator_loss = self.session.run([self.generator_training, self.generator_summary, self.generator_loss], {self.images: images, self.z: self.sample_z(args.batch_size)})
 
@@ -228,11 +231,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", default=50, type=int, help="Batch size.")
     parser.add_argument("--dataset", default="mnist-data", type=str, help="Dataset [fashion|cifar-cars|mnist-data].")
-    parser.add_argument("--epochs", default=50, type=int, help="Number of epochs.") # was 100
+    parser.add_argument("--epochs", default=100, type=int, help="Number of epochs.") # was 100
     parser.add_argument("--recodex", default=False, action="store_true", help="ReCodEx mode.")
     parser.add_argument("--recodex_validation_size", default=None, type=int, help="Validation size in ReCodEx mode.")
     parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
-    parser.add_argument("--z_dim", default=50, type=int, help="Dimension of Z.") # was 100
+    parser.add_argument("--z_dim", default=100, type=int, help="Dimension of Z.") # was 100
     args = parser.parse_args()
 
     # Create logdir name

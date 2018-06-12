@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import numpy as np
 import tensorflow as tf
 
@@ -26,14 +25,6 @@ class Network:
             # Generator
             def generator(z):
                 # TODO: Define a generator as a sequence of:
-                # - batch normalized dense layer with 1024 neurons and ReLU activation
-                # - batch normalized dense layer with 7 * 7 * 64 neurons and ReLU activation
-                # - change shape to a batch of images with size 7 x 7 and 64 channels
-                # - batch normalized conv2d_transpose with 32 output channels, kernel size 5,
-                #   stride 2, "same" padding and ReLU activation
-                # - (non-normalized) conv2d_transpose with 1 output channel, kernel size 5,
-                #   stride 2, "same" padding and sigmoid activation
-                # Return the result.
                 #
                 # Note that batch normalization should be used on inputs
                 # without bias (`use_bias=False`) and that activation should be
@@ -41,58 +32,123 @@ class Network:
                 # all the time (i.e., never use the saved estimates of moments)
                 # in the batch normalization.
 
+                # - batch normalized dense layer with 1024 neurons and ReLU activation
+                dense1 = tf.layers.dense(z, 1024, activation=None, use_bias=False)
+                bn1 = tf.layers.batch_normalization(dense1, training=True)
+                relu1 = tf.nn.relu(bn1)
+
+                # - batch normalized dense layer with 7 * 7 * 64 neurons and ReLU activation
+                dense2 = tf.layers.dense(relu1, 7*7*64, activation=None, use_bias=False)
+                bn2 = tf.layers.batch_normalization(dense2, training=True)
+                relu2 = tf.nn.relu(bn2)
+
+                # - change shape to a batch of images with size 7 x 7 and 64 channels
+                reshaped = tf.reshape(relu2, [-1, 7, 7, 64])
+
+                # - batch normalized conv2d_transpose with 32 output channels, kernel size 5,
+                #   stride 2, "same" padding and ReLU activation
+                conv1 = tf.layers.conv2d_transpose(reshaped, filters=32, kernel_size=5, strides=2, padding="same",
+                                                   activation=None, use_bias=False)
+                bn_conv = tf.layers.batch_normalization(conv1, training=True)
+                relu_conv = tf.nn.relu(bn_conv)
+
+                # - (non-normalized) conv2d_transpose with 1 output channel, kernel size 5,
+                #   stride 2, "same" padding and sigmoid activation
+                conv2 = tf.layers.conv2d_transpose(relu_conv, filters=1, kernel_size=5, strides=2,
+                                                   padding="same", activation=tf.nn.sigmoid)
+
+                # Return the result.
+                return conv2
+
+
             with tf.variable_scope("generator"):
                 # TODO(GAN): Define `self.generated_images` as a result of `generator` applied to `self.z`.
+                self.generated_images = generator(self.z)
 
             # Discriminator
             def discriminator(image):
                 # TODO: Define a discriminator as a sequence of:
+                #
+                # Same considerations as in `generator` regarding the batch normalization apply.
+
                 # - batch normalized conv2d with 32 output channels, kernel size 5,
                 #   "same" padding and ReLU activation
+                conv1 = tf.layers.conv2d(image, filters=32, kernel_size=5, padding="same",
+                                         activation=None, use_bias=False)
+                bn_conv1 = tf.layers.batch_normalization(conv1, training=True)
+                relu_conv1 = tf.nn.relu(bn_conv1)
+
                 # - max pooling layer with kernel size 2 and stride 2
+                pool1 = tf.layers.max_pooling2d(relu_conv1, pool_size=2, strides=2)
+
                 # - batch normalized conv2d with 64 output channels, kernel size 5,
                 #   "same" padding and ReLU activation
+                conv2 = tf.layers.conv2d(pool1, filters=64, kernel_size=5, padding="same",
+                                         activation=None, use_bias=False)
+                bn_conv2 = tf.layers.batch_normalization(conv2, training=True)
+                relu_conv2 = tf.nn.relu(bn_conv2)
+
                 # - max pooling layer with kernel size 2 and stride 2
+                pool2 = tf.layers.max_pooling2d(relu_conv2, pool_size=2, strides=2)
+
                 # - flattening layer
+                flatten = tf.layers.flatten(pool2)
+
                 # - batch normalized dense layer with 1024 neurons and ReLU activation
+                dense1 = tf.layers.dense(flatten, 1024, activation=None, use_bias=False)
+                bn1 = tf.layers.batch_normalization(dense1, training=True)
+                relu1 = tf.nn.relu(bn1)
+
                 # - (non-normalized) dense layer with 1 neuron without activation.
-                #
+                dense2 = tf.layers.dense(relu1, 1, activation=None)
+
                 # Consider the last hidden layer output to be the logit of whether the input
                 # images comes from real data. Change its shape to remove the last dimension
                 # (i.e., [batch_size] instead of [batch_size, 1]) and return it.
-                #
-                # Same considerations as in `generator` regarding the batch normalization apply.
+                logit = tf.reshape(dense2, [-1])
+                return logit
+
 
             with tf.variable_scope("discriminator"):
                 # TODO(GAN): Define `discriminator_logit_real` as a result of
                 # `discriminator` applied to `self.images`.
+                discriminator_logit_real = discriminator(self.images)
 
             with tf.variable_scope("discriminator", reuse = True):
                 # TODO(GAN): Define `discriminator_logit_fake` as a result of
                 # `discriminator` applied to `self.generated_images`.
-                #
+                discriminator_logit_fake = discriminator(self.generated_images)
+
                 # TODO(GAN): Note the discriminator is called in the same variable
                 # scope as several lines above -- it will try to utilize the
                 # same variables. In order to allow reusing them, we need to explicitly
                 # pass the `reuse=True` flag.
 
+
             # Losses
             # TODO(GAN): Define `self.discriminator_loss` as a sum of
             # - sigmoid cross entropy loss with gold labels of ones (1.0) and discriminator_logit_real
             # - sigmoid cross entropy loss with gold labels of zeros (0.0) and discriminator_logit_fake
+            self.discriminator_loss = (tf.losses.sigmoid_cross_entropy(tf.ones(tf.shape(discriminator_logit_real)), discriminator_logit_real)
+                                       + tf.losses.sigmoid_cross_entropy(tf.zeros(tf.shape(discriminator_logit_fake)), discriminator_logit_fake))
 
             # TODO(GAN): Define `self.generator_loss` as a sigmoid cross entropy
             # loss with gold labels of ones (1.0) and discriminator_logit_fake.
+            self.generator_loss = tf.losses.sigmoid_cross_entropy(tf.ones(tf.shape(discriminator_logit_fake)), discriminator_logit_fake)
 
             # Training
             global_step = tf.train.create_global_step()
             # TODO(GAN): Create `self.discriminator_training` as an AdamOptimizer.minimize
             # for discriminator_loss and variables in "discriminator" namespace.
             # Do *not* pass global_step as argument to AdamOptimizer.minimize.
+            self.discriminator_training = tf.train.AdamOptimizer().minimize(self.discriminator_loss, var_list=tf.global_variables("discriminator"))
+
+
 
             # TODO(GAN): Create `self.generator_training` as an AdamOptimizer.minimize
             # for generator_loss and variables in "generator" namespace.
             # This time *do* pass global_step as argument to AdamOptimizer.minimize.
+            self.generator_training = tf.train.AdamOptimizer().minimize(self.generator_loss, global_step=global_step, var_list=tf.global_variables("generator"))
 
             # Summaries
             discriminator_accuracy = tf.reduce_mean(tf.to_float(tf.concat([
@@ -116,17 +172,24 @@ class Network:
     def sample_z(self, batch_size):
         # TODO(GAN): Return uniform random noise in -1, 1 range using `np.random.uniform`
         # call, with shape [batch_size, self.z_dim].
+        return np.random.uniform(-1, 1, size=[batch_size, self.z_dim])
 
     def train(self, images):
         # TODO(GAN): In first self.session.run, evaluate self.discriminator_training,
         # self.discriminator_summary and self.discriminator_loss using
         # `images` as `self.images` and noise sampled with `self.sample_z` as `self.z`.
+        session1 = self.session.run([self.discriminator_training, self.discriminator_summary, self.discriminator_loss],
+                                    {self.images: images, self.z: self.sample_z(images.shape[0])})
 
         # TODO(GAN): In second self.session.run, evaluate self.generator_training,
         # self.generator_summary and self.generator_loss using
         # noise sampled with `self.sample_z` as `self.z`.
+        session2 = self.session.run([self.generator_training, self.generator_summary, self.generator_loss],
+                                    {self.z: self.sample_z(len(images))})
 
         # TODO(GAN): Return the sum of evaluated self.discriminator_loss and self.generator_loss.
+        return session1[2] + session2[2]
+
 
     def generate(self):
         GRID = 20
@@ -192,7 +255,7 @@ if __name__ == "__main__":
                                                source_url="http://fashion-mnist.s3-website.eu-central-1.amazonaws.com/")
     elif args.dataset == "cifar-cars":
         data = mnist.input_data.read_data_sets("cifar-cars", reshape=False, validation_size=0, seed=42,
-                                            source_url="https://ufal.mff.cuni.cz/~straka/courses/npfl114/1718/cifar-cars/")
+                                               source_url="https://ufal.mff.cuni.cz/~straka/courses/npfl114/1718/cifar-cars/")
     else:
         data = mnist.input_data.read_data_sets(args.dataset, reshape=False, validation_size=0, seed=42)
 
