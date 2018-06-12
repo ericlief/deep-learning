@@ -356,9 +356,11 @@ class Network:
             sentence_lens, _, charseq_ids, charseqs, charseq_lens = dataset.next_batch(batch_size, including_charseqs=True)
             predictions, prediction_lengths = self.session.run(
                 [self.predictions, self.prediction_lens],
-                {self.sentence_lens: sentence_lens, self.source_ids: charseq_ids[train.FORMS],
+                {self.sentence_lens: sentence_lens, self.source_ids: charseq_ids[train.FORMS], 
+                 self.target_ids: charseq_ids[train.LEMMAS], self.target_seq_lens: charseq_lens[train.LEMMAS], # why error?
                  self.source_seqs: charseqs[train.FORMS], self.source_seq_lens: charseq_lens[train.FORMS]})
-
+             
+            
             for length in sentence_lens:
                 lemmas.append([])
                 for i in range(length):
@@ -403,18 +405,18 @@ if __name__ == "__main__":
     # Parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", default=10, type=int, help="Batch size.")
-    parser.add_argument("--char_dim", default=64, type=int, help="Character-level embedding dimension.")
-    parser.add_argument("--cnne_filters", default=32, type=int, help="CNN embedding filters per length.")
+    parser.add_argument("--char_dim", default=8, type=int, help="Character-level embedding dimension.")
+    parser.add_argument("--cnne_filters", default=8, type=int, help="CNN embedding filters per length.")
     parser.add_argument("--optimizer", default="Adam", type=str, help="Optimizer.")    
     parser.add_argument("--cnne_max", default=4, type=int, help="Maximum CNN filter length.")
     parser.add_argument("--epochs", default=10, type=int, help="Number of epochs.")
     parser.add_argument("--recodex", default=False, action="store_true", help="ReCodEx mode.")
     parser.add_argument("--rnn_cell", default="LSTM", type=str, help="RNN cell type.")
-    parser.add_argument("--rnn_dim", default=64, type=int, help="RNN cell dimension.")
+    parser.add_argument("--rnn_dim", default=8, type=int, help="RNN cell dimension.")
     parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
     parser.add_argument("--learning_rate", default=0.001, type=float, help="Initial learning rate.") 
     parser.add_argument("--learning_rate_final", default=None, type=float, help="Final learning rate.")    
-    parser.add_argument("--we_dim", default=64, type=int, help="Word embedding dimension.")
+    parser.add_argument("--we_dim", default=8, type=int, help="Word embedding dimension.")
     parser.add_argument("--momentum", default=None, type=float, help="Momentum.")
     parser.add_argument("--dropout", default=0, type=float, help="Dropout rate.")
     parser.add_argument("--bn", default=False, type=bool, help="Batch normalization.")
@@ -434,7 +436,11 @@ if __name__ == "__main__":
     if not os.path.exists("logs"): os.mkdir("logs") # TF 1.6 will do this by itself
 
     # Load the data
-    train = morpho_dataset.MorphoDataset("czech-pdt-train.txt")
+    
+    # ***For debugging only***
+    train = morpho_dataset.MorphoDataset("train.txt")    
+    
+    #train = morpho_dataset.MorphoDataset("czech-pdt-train.txt")
     dev = morpho_dataset.MorphoDataset("czech-pdt-dev.txt", train=train, shuffle_batches=False)
     test = morpho_dataset.MorphoDataset("czech-pdt-test.txt", train=train, shuffle_batches=False)
 
@@ -464,7 +470,8 @@ if __name__ == "__main__":
             #print("", file=test_file)
         
         forms = test.factors[test.FORMS].strings
-        lemmas = test.factors[test.LEMMAS].strings
+        lemmas = network.predict(test, args.batch_size)        
+        #lemmas = test.factors[test.LEMMAS].strings
         tags = network.predict(test, args.batch_size)
         #forms = dev.factors[dev.FORMS].strings
         #lemmas = dev.factors[dev.LEMMAS].strings        
