@@ -63,18 +63,19 @@ class Network:
                 cell_fw = tf.nn.rnn_cell.BasicRNNCell(num_units)
                 cell_bw = tf.nn.rnn_cell.BasicRNNCell(num_units)
 
-            elif args.rnn_cell == 'LSTM':
+            elif args.rnn_cell == 'GRU':
+                cell_fw = tf.nn.rnn_cell.GRUCell(num_units)
+                cell_bw = tf.nn.rnn_cell.GRUCell(num_units)       
+            
+            else: # LSTM default
                 cell_fw = tf.nn.rnn_cell.BasicLSTMCell(num_units)
                 cell_bw = tf.nn.rnn_cell.BasicLSTMCell(num_units)
 
-            else: # Problem when gru selected again. why only 40% acc
-                # ?????????
-                cell_fw = tf.nn.rnn_cell.GRUCell(num_units)
-                cell_bw = tf.nn.rnn_cell.GRUCell(num_units)            
-
             # Add dropout
-            cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout)
-            cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout)
+            if args.dropout:
+                cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout)
+                cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout)
+            
             # Create word embeddings for num_words of dimensionality args.we_dim
             # using `tf.get_variable`.
             word_embeddings = tf.get_variable('word_embeddings', [num_words, args.we_dim])
@@ -84,7 +85,6 @@ class Network:
             embedded_words = tf.nn.embedding_lookup(word_embeddings, self.word_ids) # which word ids?
 
             # Convolutional word embeddings (CNNE)
-
             # Generate character embeddings for num_chars of dimensionality args.cle_dim.
             char_embeddings = tf.get_variable('char_embeddings', [num_chars, args.cle_dim])
 
@@ -97,7 +97,7 @@ class Network:
             # - perform channel-wise max-pooling over the whole word, generating output
             #   of size `args.cnne_filters` for every word.
             #cnn_filter_no = 0
-            outputs = []
+            features = []
 
             # uncomment to manually to 1d conv
             #embedded_chars_ = tf.expand_dims(embedded_chars, axis=1) # change to shape [n, 1, max_len, dim], so its like an image of height one
@@ -110,24 +110,24 @@ class Network:
                 #print(output)
 
                 #output = tf.layers.conv1d(embedded_chars, args.cnne_filters, kernel_size, strides=1, padding='VALID', name='cnne_layer_'+str(kernel_size))
-                output = tf.layers.conv1d(embedded_chars, args.cnne_filters, kernel_size, strides=1, padding='VALID', activation=None, use_bias=False, name='cnne_layer_'+str(kernel_size))
+                conv = tf.layers.conv1d(embedded_chars, args.cnne_filters, kernel_size, strides=1, padding='VALID', activation=None, use_bias=False, name='cnne_layer_'+str(kernel_size))
 
                 # Apply batch norm
                 if args.bn:
-                    output = tf.layers.batch_normalization(output, training=self.is_training, name='cnn_layer_BN_'+str(kernel_size))
+                    conv = tf.layers.batch_normalization(conv, training=self.is_training, name='cnn_layer_BN_'+str(kernel_size))
                 #output = tf.nn.relu(output, name='cnn_layer_relu_'+str(kernel_size))
-                pooling = tf.reduce_max(output, axis=1)
+                pooling = tf.reduce_max(conv, axis=1)
 
                 #print(pooling)
                 #cnn_layer_no += 1
-                outputs.append(pooling)
-
+                features.append(pooling)
+                #print('conv pool', pooling)
 
             # Concatenate the computed features (in the order of kernel sizes 2..args.cnne_max).
             # Consequently, each word from `self.charseqs` is represented using convolutional embedding
             # (CNNE) of size `(args.cnne_max-1)*args.cnne_filters`.
-            concat_output = tf.concat(outputs, axis=-1)
-            #print(concat_output)
+            concat_output = tf.concat(features, axis=1)
+            #print('concat', concat_output)
 
             # Generate CNNEs of all words in the batch by indexing the just computed embeddings
             # by self.charseq_ids (using tf.nn.embedding_lookup).
@@ -135,7 +135,7 @@ class Network:
             #print('cnne', cnne)
 
             # Concatenate the word embeddings (computed above) and the CNNE (in this order).
-            embedded_inputs = tf.concat([embedded_words, cnne], axis=-1)
+            embedded_inputs = tf.concat([embedded_words, cnne], axis=2)
             #print('emb in', embedded_inputs)
 
             # Using tf.nn.bidirectional_dynamic_rnn, process the embedded inputs.
@@ -150,8 +150,8 @@ class Network:
             #output2 = tf.nn.relu(output2, name='birnn_relu2'+str(kernel_size))
 
             # Concatenate the outputs for fwd and bwd directions (in the third dimension).
-            output = tf.concat(outputs, axis=-1)
-
+            output = tf.concat(outputs, axis=2)
+            #print('out', output) # (?, ?, 108)
             # Add a dense layer (without activation) into num_tags classes and
             # store result in `output_layer`.
             output_layer = tf.layers.dense(output, num_tags) 
@@ -361,9 +361,9 @@ if __name__ == "__main__":
     
     # Subset for sampling/testing
 
-    #Train = Morpho_dataset.MorphoDataset("train.txt")
+    train = morpho_dataset.MorphoDataset("train.txt")
     
-    train = morpho_dataset.MorphoDataset("czech-pdt-train.txt")
+    #train = morpho_dataset.MorphoDataset("czech-pdt-train.txt")
     dev = morpho_dataset.MorphoDataset("czech-pdt-dev.txt", train=train, shuffle_batches=False)
     test = morpho_dataset.MorphoDataset("czech-pdt-test.txt", train=train, shuffle_batches=False)
 
