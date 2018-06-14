@@ -100,7 +100,7 @@ class Network:
                 # Bug: bias=false?
                 # conv = tf.layers.conv1d(embedded_chars, args.cnne_filters, kernel_size, strides=1, padding='VALID', activation=None, use_bias=False, name='cnne_layer_'+str(kernel_size))
                 conv = tf.layers.conv1d(inputs=embedded_chars, filters=args.cnne_filters, kernel_size=kernel_size,
-                                            strides=1, padding='valid', activation=None)              
+                                            strides=1, padding='valid', activation=None)       # valid=only fully inside text       
                 # Apply batch norm
                 if args.bn:
                     conv = tf.layers.batch_normalization(conv, training=self.is_training, name='cnn_layer_BN_'+str(kernel_size))
