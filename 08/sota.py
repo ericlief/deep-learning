@@ -58,8 +58,23 @@ class Network:
             # - training in `self.training`
             # - predictions in `self.predictions`
             # - weights in `weights`
-            cell_fw = tf.nn.rnn_cell.GRUCell(args.rnn_cell_dim)
-            cell_bw = tf.nn.rnn_cell.GRUCell(args.rnn_cell_dim)  
+            num_units = args.rnn_cell_dim
+            if args.rnn_cell == 'RNN':
+                cell_fw = tf.nn.rnn_cell.BasicRNNCell(num_units)
+                cell_bw = tf.nn.rnn_cell.BasicRNNCell(num_units)
+
+            elif args.rnn_cell == 'GRU':
+                cell_fw = tf.nn.rnn_cell.GRUCell(num_units)
+                cell_bw = tf.nn.rnn_cell.GRUCell(num_units)       
+            
+            else: # LSTM default
+                cell_fw = tf.nn.rnn_cell.BasicLSTMCell(num_units)
+                cell_bw = tf.nn.rnn_cell.BasicLSTMCell(num_units)
+
+            # Add dropout
+            if args.dropout:
+                cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout)
+                cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout)
             
             # Create word embeddings (WE) for num_words of dimensionality args.we_dim
             # using `tf.get_variable`.
@@ -123,10 +138,45 @@ class Network:
             
             # Generate `weights` as a 1./0. mask of valid/invalid words (using `tf.sequence_mask`).
             weights = tf.sequence_mask(self.sentence_lens, dtype=tf.float32)
+            
+            # Training
             loss = tf.losses.sparse_softmax_cross_entropy(labels=self.tags, logits=logits, weights=weights)
             global_step = tf.train.create_global_step()
-            self.training = tf.train.AdamOptimizer().minimize(loss, global_step=global_step, name="training")
-                
+            
+            # For adaptable learning rate if desired
+            #self.learning_rate = tf.get_variable("learning_rate", dtype=tf.float32, initializer=args.learning_rate) 
+            # Set adaptable learning rate with decay
+            learning_rate = args.learning_rate  # init rate         
+            if args.learning_rate_final and args.epochs > 1:
+            # Polynomial decay
+                if not args.decay_rate: 
+                    decay_rate = (args.learning_rate_final / args.learning_rate)**(1 / (args.epochs - 1))
+                learning_rate = tf.train.polynomial_decay(args.learning_rate, global_step, batches, decay_rate, staircase=True) # change lr each batch
+            # Exponential decay
+            else:
+                learning_rate = tf.train.exponential_decay(args.learning_rate, global_step, batches, args.decay_rate, staircase=True) # change lr each batch
+        
+        
+            # Choose optimizer                                              
+            if args.optimizer == "SGD" and args.momentum:
+                optimizer = tf.train.MomentumOptimizer(learning_rate, momentum=args.momentum) 
+                self.training = tf.train.GradientDescentOptimizer(learning_rate) 
+            elif args.optimizer == "SGD":
+                optimizer = tf.train.GradientDescentOptimizer(learning_rate) 
+            else:                
+                optimizer = tf.train.AdamOptimizer(learning_rate) 
+        
+        
+            # Note how instead of `optimizer.minimize` we first get the # gradients using
+            # `optimizer.compute_gradients`, then optionally clip them and
+            # finally apply then using `optimizer.apply_gradients`.
+            gradients, variables = zip(*optimizer.compute_gradients(loss))
+            # TODO: Compute norm of gradients using `tf.global_norm` into `gradient_norm`.
+            gradient_norm = tf.global_norm(gradients) 
+            # TODO: If args.clip_gradient, clip gradients (back into `gradients`) using `tf.clip_by_global_norm`.            
+            if args.clip_gradient is not None:
+                gradients, _ = tf.clip_by_global_norm(gradients, clip_norm=args.clip_gradient, use_norm=gradient_norm)
+            self.training = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step)       
       
             
             # Summaries
@@ -138,7 +188,8 @@ class Network:
             self.summaries = {}
             with summary_writer.as_default(), tf.contrib.summary.record_summaries_every_n_global_steps(10):
                 self.summaries["train"] = [tf.contrib.summary.scalar("train/loss", self.update_loss),
-                                           tf.contrib.summary.scalar("train/accuracy", self.update_accuracy)]
+                                           tf.contrib.summary.scalar("train/gradient_norm", gradient_norm),
+                                           tf.contrib.summary.scalar("train/accuracy", self.update_accuracy)]              
             with summary_writer.as_default(), tf.contrib.summary.always_record_summaries():
                 for dataset in ["dev", "test"]:
                     self.summaries[dataset] = [tf.contrib.summary.scalar(dataset + "/loss", self.current_loss),
@@ -186,6 +237,24 @@ if __name__ == "__main__":
     import datetime
     import os
     import re
+
+    def find_analysis_tag(form, tag):
+
+        # Get tags for form in analyzer and guesser lists
+        dict_tag_list = [analysis.tag for analysis in analyzer_dictionary.get(form)]
+        guesser_tag_list = [analysis.tag for analysis in analyzer_guesser.get(form)]
+        combined_tag_list = dict_tag_list + guesser_tag_list 
+        total_tags = len(combined_tag_list)
+
+        # Keep tag if empty list or tag already in list
+        if total_tags == 0 or tag in combined_tag_list:
+            return tag
+
+        # Get tag probs
+        tag_probs = defaultdict(lambda: 0)
+        for tag in combined_tag_list:
+            tag_probs[tag] += 1 / total_tags
+        return max(tag_probs, key=tag_probs.get)
 
     # Fix random seed
     np.random.seed(42)
@@ -239,14 +308,63 @@ if __name__ == "__main__":
     # Train
     for i in range(args.epochs):
         network.train_epoch(train, args.batch_size)
+        accuracy = network.evaluate("dev", dev, args.batch_size)
+        print("{:.2f}".format(100 * accuracy))
+        
+    ## Predict test data
+    #with open("{}/tagger_sota_test.txt".format(args.logdir), "w", encoding="utf-8") as test_file:
+        #forms = test.factors[test.FORMS].strings
+        #tags = network.predict(test, args.batch_size)
+        #for s in range(len(forms)):
+            #for i in range(len(forms[s])):
+                #print("{}\t_\t{}".format(forms[s][i], test.factors[test.TAGS].words[tags[s][i]]), file=test_file)
+            #print("", file=test_file)
 
-        network.evaluate("dev", dev, args.batch_size)
+    # Predict dev data
+    with open("{}/tagger_sota_dev.txt".format(args.logdir), "w") as test_file:
+ 
+        forms = dev.factors[dev.FORMS].strings
+        #lemmas = dev.factors[dev.LEMMAS].strings        
+        tags = network.predict(dev, args.batch_size)
 
-    # Predict test data
-    with open("{}/tagger_sota_test.txt".format(args.logdir), "w", encoding="utf-8") as test_file:
-        forms = test.factors[test.FORMS].strings
-        tags = network.predict(test, args.batch_size)
         for s in range(len(forms)):
             for i in range(len(forms[s])):
-                print("{}\t_\t{}".format(forms[s][i], test.factors[test.TAGS].words[tags[s][i]]), file=test_file)
+                form = forms[s][i]
+                # lemma = lemmas[s][i]
+                tag = dev.factors[dev.TAGS].words[tags[s][i]]
+
+                # print('candidates', form, lemma, tag)
+
+                # Use analyzer (optional)
+                if args.anal:
+                    tag = find_analysis_tag(form, tag)
+
+                #print("{}\t_\t{}".format(form, tag), file=test_file)
+                #print("{}\t{}\t{}".format(form, lemma, tag), file=test_file)
+                print("{}\t_\t{}".format(forms[s][i], test.factors[dev.TAGS].words[tags[s][i]]), file=test_file)
             print("", file=test_file)
+            
+    # Predict test data
+    with open("{}/tagger_sota_test.txt".format(args.logdir), "w") as test_file:
+        #print(test_file)
+        forms = test.factors[test.FORMS].strings
+        #lemmas = test.factors[test.LEMMAS].strings
+        tags = network.predict(test, args.batch_size)
+
+        for s in range(len(forms)):
+            for i in range(len(forms[s])):
+                form = forms[s][i]
+                #lemma = lemmas[s][i]
+                tag = test.factors[test.TAGS].words[tags[s][i]]
+                #tag = dev.factors[dev.TAGS].words[tags[s][i]]
+
+                # print('candidates', form, lemma, tag)
+
+                # Use analyzer (optional)
+                if args.anal:
+                    tag = find_analysis_tag(form, tag)
+
+                #print("{}\t_\t{}".format(form, tag), file=test_file)
+                #print("{}\t{}\t{}".format(form, lemma, tag), file=test_file)
+                print("{}\t_\t{}".format(forms[s][i], test.factors[dev.TAGS].words[tags[s][i]]), file=test_file)
+            print("", file=test_file)    
