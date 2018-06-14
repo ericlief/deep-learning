@@ -51,6 +51,7 @@ class Network:
             self.charseq_lens = tf.placeholder(tf.int32, [None], name="charseq_lens")
             self.charseq_ids = tf.placeholder(tf.int32, [None, None], name="charseq_ids")
             self.tags = tf.placeholder(tf.int32, [None, None], name="tags")
+            self.is_training = tf.placeholder(tf.bool, [], name="is_training")
 
             # TODO: Training.
             # Define:
@@ -151,10 +152,10 @@ class Network:
             # Polynomial decay
                 if not args.decay_rate: 
                     decay_rate = (args.learning_rate_final / args.learning_rate)**(1 / (args.epochs - 1))
-                learning_rate = tf.train.polynomial_decay(args.learning_rate, global_step, batches, decay_rate, staircase=True) # change lr each batch
+                learning_rate = tf.train.polynomial_decay(args.learning_rate, global_step, batches_per_epoch, decay_rate, staircase=True) # change lr each batch
             # Exponential decay
             else:
-                learning_rate = tf.train.exponential_decay(args.learning_rate, global_step, batches, args.decay_rate, staircase=True) # change lr each batch
+                learning_rate = tf.train.exponential_decay(args.learning_rate, global_step, batches_per_epoch, args.decay_rate, staircase=True) # change lr each batch
         
         
             # Choose optimizer                                              
@@ -208,7 +209,7 @@ class Network:
                              {self.sentence_lens: sentence_lens,
                               self.charseqs: charseqs[train.FORMS], self.charseq_lens: charseq_lens[train.FORMS],
                               self.word_ids: word_ids[train.FORMS], self.charseq_ids: charseq_ids[train.FORMS],
-                              self.tags: word_ids[train.TAGS]})
+                              self.tags: word_ids[train.TAGS], self.is_training: True})
 
     def evaluate(self, dataset_name, dataset, batch_size):
         self.session.run(self.reset_metrics)
@@ -218,7 +219,7 @@ class Network:
                              {self.sentence_lens: sentence_lens,
                               self.charseqs: charseqs[train.FORMS], self.charseq_lens: charseq_lens[train.FORMS],
                               self.word_ids: word_ids[train.FORMS], self.charseq_ids: charseq_ids[train.FORMS],
-                              self.tags: word_ids[train.TAGS]})
+                              self.tags: word_ids[train.TAGS], self.is_training: False})
         return self.session.run([self.current_accuracy, self.summaries[dataset_name]])[0]
 
     def predict(self, dataset, batch_size):
@@ -226,9 +227,10 @@ class Network:
         while not dataset.epoch_finished():
             sentence_lens, word_ids, charseq_ids, charseqs, charseq_lens = dataset.next_batch(batch_size, including_charseqs=True)
             tags.extend(self.session.run(self.predictions,
-                                         {self.sentence_lens: sentence_lens,
-                                          self.charseqs: charseqs[train.FORMS], self.charseq_lens: charseq_lens[train.FORMS],
-                                          self.word_ids: word_ids[train.FORMS], self.charseq_ids: charseq_ids[train.FORMS]}))
+                               {self.sentence_lens: sentence_lens,
+                                self.charseqs: charseqs[train.FORMS], self.charseq_lens: charseq_lens[train.FORMS],
+                                self.word_ids: word_ids[train.FORMS], self.charseq_ids: charseq_ids[train.FORMS],
+                                self.is_training: False}))
         return tags
 
 
@@ -296,7 +298,10 @@ if __name__ == "__main__":
     train = morpho_dataset.MorphoDataset("czech-pdt-train.txt")
     dev = morpho_dataset.MorphoDataset("czech-pdt-dev.txt", train=train, shuffle_batches=False)
     test = morpho_dataset.MorphoDataset("czech-pdt-test.txt", train=train, shuffle_batches=False)
-
+    
+    batches_per_epoch = len(train.sentence_lens) // args.batch_size
+    print('num training sents', len(train.sentence_lens))
+    print('num batches per epoch', batches_per_epoch)
     analyzer_dictionary = MorphoAnalyzer("czech-pdt-analysis-dictionary.txt")
     analyzer_guesser = MorphoAnalyzer("czech-pdt-analysis-guesser.txt")
 
