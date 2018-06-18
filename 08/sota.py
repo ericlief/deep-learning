@@ -350,7 +350,6 @@ if __name__ == "__main__":
     dev = morpho_dataset.MorphoDataset("/afs/ms/u/l/liefe/data/cs/czech-pdt-dev.txt", train=train, shuffle_batches=False)
     test = morpho_dataset.MorphoDataset("/afs/ms/u/l/liefe/data/cs/czech-pdt-test.txt", train=train, shuffle_batches=False)
 
-    vocab_size = len(train.factors[train.FORMS].words)
     # Load whole gensim wv model with pretrained embeddings
     #model = Word2Vec.load('word2vec_cs')
     #wv = model.wv.syn0 # word2vec embeddings
@@ -361,11 +360,13 @@ if __name__ == "__main__":
     #wv_file = '/home/liefe/py/we/word2vec_cs.txt'
     #wv, index_to_word, word_to_index = load_w2v.get_params(wv_file)
     
-    
-    
+    # Data stats
+    vocab_size = len(train.factors[train.FORMS].words)
     batches_per_epoch = len(train.sentence_lens) // args.batch_size
     print('num training sents', len(train.sentence_lens))
     print('num batches per epoch', batches_per_epoch)
+    print('vocab size = {}, using we_dim = {}'.format(vocab_size, args.we_dim))
+    
     analyzer_dictionary = MorphoAnalyzer("czech-pdt-analysis-dictionary.txt")
     analyzer_guesser = MorphoAnalyzer("czech-pdt-analysis-guesser.txt")
 
@@ -374,7 +375,6 @@ if __name__ == "__main__":
     network.construct(args, len(train.factors[train.FORMS].words), len(train.factors[train.FORMS].alphabet),
                       len(train.factors[train.TAGS].words))
 
-    print('vocab size = {}, using we_dim = {}'.format(vocab_size, args.we_dim))
     #sys.exit(1)
     
     # Load pretrained Word2Vec embeddings
