@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
+import sys
+
+#sys.path.append('/home/liefe/py/we')
 import numpy as np
 import tensorflow as tf
-
+from gensim.models import Word2Vec
 import morpho_dataset
+from collections import defaultdict
+#import load_w2v  
+
 
 class MorphoAnalyzer:
     """ Loader for data of morphological analyzer.
@@ -47,12 +53,14 @@ class Network:
             # Inputs
             self.sentence_lens = tf.placeholder(tf.int32, [None], name="sentence_lens")
             self.word_ids = tf.placeholder(tf.int32, [None, None], name="word_ids")
+            #self.wv_ids = tf.placeholder(tf.int32, [None, None], name="word_ids_wv")
             self.charseqs = tf.placeholder(tf.int32, [None, None], name="charseqs")
             self.charseq_lens = tf.placeholder(tf.int32, [None], name="charseq_lens")
             self.charseq_ids = tf.placeholder(tf.int32, [None, None], name="charseq_ids")
             self.tags = tf.placeholder(tf.int32, [None, None], name="tags")
             self.is_training = tf.placeholder(tf.bool, [], name="is_training")
-
+            #self.wv = tf.placeholder(tf.float32, [None, None], name="pretrained_word_embedding")
+            #self.we
             # TODO: Training.
             # Define:
             # - loss in `loss`
@@ -79,7 +87,12 @@ class Network:
             
             # Create word embeddings (WE) for num_words of dimensionality args.we_dim
             # using `tf.get_variable`.
-            word_embeddings = tf.get_variable('word_embeddings', [num_words, args.we_dim])            
+            if args.use_wv:
+                #word_embeddings = tf.get_variable('word_embeddings', shape=wv.shape, initializer=tf.constant_initializer(wv), trainable=False)
+                word_embeddings = tf.Variable(tf.random_uniform([vocab_size, args.we_dim], -1.0, 1.0, name='word_embeddings'))
+            
+            else: 
+                word_embeddings = tf.get_variable('word_embeddings', [num_words, args.we_dim])            
             # Embed self.word_ids according to the word embeddings, by utilizing
             # `tf.nn.embedding_lookup`.
             embedded_words = tf.nn.embedding_lookup(word_embeddings, self.word_ids) # which word ids?
@@ -201,15 +214,39 @@ class Network:
             with summary_writer.as_default():
                 tf.contrib.summary.initialize(session=self.session, graph=self.session.graph)
 
+            
+            
+
+
     def train_epoch(self, train, batch_size):
         while not train.epoch_finished():
+            #sentence_lens, word_ids, charseq_ids, charseqs, charseq_lens = train.next_batch(batch_size, including_charseqs=True)
+            
+            # Added strings here
             sentence_lens, word_ids, charseq_ids, charseqs, charseq_lens = train.next_batch(batch_size, including_charseqs=True)
+            #strings = strings.lower()
+            #print(strings[0][:10])
+            ## Get new indexes for we. Since sentences are different lengths
+            ## we need to pad with zeros, to later do the we lookup
+            #max_sent_len = np.max(sentence_lens)
+            #num_sents = len(sentence_lens)
+            #wv_ids = np.zeros([num_sents, max_sent_len], np.int32) # build arr and pad with zeros 
+            #for i in range(num_sents):
+                #ids = [word_to_index[w] for w in strings[train.FORMS][i]]
+                #print(i, ids)
+                #wv_ids[i, 0:sentence_lens[i]] = ids
+                
+                #for w in strings[i]:
+                    #ids.append(
+            
+            
             self.session.run(self.reset_metrics)
             self.session.run([self.training, self.summaries["train"]],
                              {self.sentence_lens: sentence_lens,
                               self.charseqs: charseqs[train.FORMS], self.charseq_lens: charseq_lens[train.FORMS],
                               self.word_ids: word_ids[train.FORMS], self.charseq_ids: charseq_ids[train.FORMS],
-                              self.tags: word_ids[train.TAGS], self.is_training: True})
+                              self.tags: word_ids[train.TAGS], self.is_training: True}) #add
+                             # self.wv: wv, self.wv_ids: wv_ids})
 
     def evaluate(self, dataset_name, dataset, batch_size):
         self.session.run(self.reset_metrics)
@@ -219,7 +256,9 @@ class Network:
                              {self.sentence_lens: sentence_lens,
                               self.charseqs: charseqs[train.FORMS], self.charseq_lens: charseq_lens[train.FORMS],
                               self.word_ids: word_ids[train.FORMS], self.charseq_ids: charseq_ids[train.FORMS],
-                              self.tags: word_ids[train.TAGS], self.is_training: False})
+                              self.tags: word_ids[train.TAGS], self.is_training: False }) #add
+                              #self.wv: wv, self.wv_ids: wv_ids})
+            
         return self.session.run([self.current_accuracy, self.summaries[dataset_name]])[0]
 
     def predict(self, dataset, batch_size):
@@ -230,8 +269,9 @@ class Network:
                                {self.sentence_lens: sentence_lens,
                                 self.charseqs: charseqs[train.FORMS], self.charseq_lens: charseq_lens[train.FORMS],
                                 self.word_ids: word_ids[train.FORMS], self.charseq_ids: charseq_ids[train.FORMS],
-                                self.is_training: False}))
-        return tags
+                                self.is_training: False})) #add
+                                #self.wv: wv, self.wv_ids: wv_ids}))
+            return tags
 
 
 if __name__ == "__main__":
@@ -239,7 +279,9 @@ if __name__ == "__main__":
     import datetime
     import os
     import re
-
+    import sys
+    from collections import defaultdict
+    
     def find_analysis_tag(form, tag):
 
         # Get tags for form in analyzer and guesser lists
@@ -258,6 +300,9 @@ if __name__ == "__main__":
             tag_probs[tag] += 1 / total_tags
         return max(tag_probs, key=tag_probs.get)
 
+
+    #sys.path.append('/home/liefe/py/we')
+    
     # Fix random seed
     np.random.seed(42)
 
@@ -265,7 +310,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", default=50, type=int, help="Batch size.")
     parser.add_argument("--cle_dim", default=64, type=int, help="Character-level embedding dimension.")
-    parser.add_argument("--cnne_filters", default=32, type=int, help="CNN embedding filters per length.")
+    parser.add_argument("--cnne_filters", default=8, type=int, help="CNN embedding filters per length.")
     parser.add_argument("--optimizer", default="Adam", type=str, help="Optimizer.")    
     parser.add_argument("--cnne_max", default=4, type=int, help="Maximum CNN filter length.")
     parser.add_argument("--epochs", default=5, type=int, help="Number of epochs.")
@@ -275,7 +320,7 @@ if __name__ == "__main__":
     parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
     parser.add_argument("--learning_rate", default=0.001, type=float, help="Initial learning rate.") 
     parser.add_argument("--learning_rate_final", default=None, type=float, help="Final learning rate.")    
-    parser.add_argument("--we_dim", default=64, type=int, help="Word embedding dimension.")
+    parser.add_argument("--we_dim", default=128, type=int, help="Word embedding dimension.")
     parser.add_argument("--momentum", default=None, type=float, help="Momentum.")
     parser.add_argument("--dropout", default=0, type=float, help="Dropout rate.")
     parser.add_argument("--bn", default=False, type=bool, help="Batch normalization.")
@@ -283,6 +328,7 @@ if __name__ == "__main__":
     parser.add_argument("--layers", default=1, type=int, help="Number of rnn layers.")
     parser.add_argument("--anal", default=False, type=bool, help="Filter output with analyzer.")
     parser.add_argument("--decay_rate", default=0, type=float, help="Decay rate.")
+    parser.add_argument("--use_wv", default=True, type=bool, help="Use pretrained word embeddings.")
 
     args = parser.parse_args()
 
@@ -295,9 +341,27 @@ if __name__ == "__main__":
     if not os.path.exists("logs"): os.mkdir("logs") # TF 1.6 will do this by itself
 
     # Load the data
-    train = morpho_dataset.MorphoDataset("czech-pdt-train.txt")
-    dev = morpho_dataset.MorphoDataset("czech-pdt-dev.txt", train=train, shuffle_batches=False)
-    test = morpho_dataset.MorphoDataset("czech-pdt-test.txt", train=train, shuffle_batches=False)
+    #train = morpho_dataset.MorphoDataset("czech-pdt-train.txt")
+    #train = morpho_dataset.MorphoDataset("/home/liefe/data/cs/train.txt")
+    #dev = morpho_dataset.MorphoDataset("/home/liefe/data/cs/czech-pdt-dev.txt", train=train, shuffle_batches=False)
+    #test = morpho_dataset.MorphoDataset("/home/liefe/data/cs/czech-pdt-test.txt", train=train, shuffle_batches=False)
+    
+    train = morpho_dataset.MorphoDataset("/afs/ms/u/l/liefe/data/cs/train.txt")
+    dev = morpho_dataset.MorphoDataset("/afs/ms/u/l/liefe/data/cs/czech-pdt-dev.txt", train=train, shuffle_batches=False)
+    test = morpho_dataset.MorphoDataset("/afs/ms/u/l/liefe/data/cs/czech-pdt-test.txt", train=train, shuffle_batches=False)
+
+    vocab_size = len(train.factors[train.FORMS].words)
+    # Load whole gensim wv model with pretrained embeddings
+    #model = Word2Vec.load('word2vec_cs')
+    #wv = model.wv.syn0 # word2vec embeddings
+    #vocab = model.wv.vocab # list of Vocab objects with (cnt, index, sample_int)
+    #index_to_word = model.wv.index2word 
+    
+    # Get pretrained embeddings and params
+    #wv_file = '/home/liefe/py/we/word2vec_cs.txt'
+    #wv, index_to_word, word_to_index = load_w2v.get_params(wv_file)
+    
+    
     
     batches_per_epoch = len(train.sentence_lens) // args.batch_size
     print('num training sents', len(train.sentence_lens))
@@ -309,6 +373,45 @@ if __name__ == "__main__":
     network = Network(threads=args.threads)
     network.construct(args, len(train.factors[train.FORMS].words), len(train.factors[train.FORMS].alphabet),
                       len(train.factors[train.TAGS].words))
+
+    print('vocab size = {}, using we_dim = {}'.format(vocab_size, args.we_dim))
+    #sys.exit(1)
+    
+    # Load pretrained Word2Vec embeddings
+    #file = "/home/liefe/py/wv_data/word2vec_cs_bin"
+    file = '/afs/ms/u/l/liefe/we/word2vec_cs.bin'
+    if args.use_wv:
+        print("Load word2vec file {}\n".format(file))
+        we = np.random.uniform(-0.25, 0.25, (vocab_size, args.we_dim))                
+        with open(file, "rb") as f:
+            header = f.readline()
+            wv_vocab_size, wv_we_dim = map(int, header.split())
+            #if wv_we_dim > args.we_dim:
+                #sys.exit("we_dim < predtrained embedding")
+            #word_to_index = {}
+            #binary_len = np.dtype('float32').itemsize * wv_we_dim
+            binary_len = np.dtype('float32').itemsize * args.we_dim
+            
+            for line in range(wv_vocab_size):
+                word = []
+                while True:
+                    ch = f.read(1)
+                    if ch == ' ':
+                        word = ''.join(word)
+                        break
+                    if ch != '\n':
+                        word.append(ch)   
+                #idx = vocab_processor.vocabulary_.get(word)
+                idx = train.factors[train.FORMS].words_map.get(word)
+                print(word, idx)
+                if idx != 0: # 0 returned by get() if not in vocab
+                    we[idx] = np.fromstring(f.read(binary_len), dtype='float32')
+                    word_to_index[word] = idx
+                else:
+                    f.read(binary_len) # skip    
+        # Set we var
+        self.session.run(network.word_embedding.assign(we))
+    
 
     # Train
     for i in range(args.epochs):
