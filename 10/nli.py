@@ -258,13 +258,14 @@ class Network:
         while not dataset.epoch_finished():
             sentence_lens, word_ids, charseq_ids, charseqs, charseq_lens, tags, levels, prompts, _ = \
                 dataset.next_batch(batch_size)
-            languages.extend(self.session.run(self.predictions,
+            predictions = self.session.run(self.predictions,
                                               {self.sentence_lens: sentence_lens,
                                                self.charseqs: charseqs, self.charseq_lens: charseq_lens,
                                                self.word_ids: word_ids, self.charseq_ids: charseq_ids,
-                                               self.tags: tags, self.is_training: False}))
+                                               self.tags: tags, self.is_training: False})
+            languages.extend(tf.argmax(predictions, axis=1))
 
-        return languages
+        return languages	
 
 
 if __name__ == "__main__":
@@ -279,10 +280,10 @@ if __name__ == "__main__":
     # Parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", default=50, type=int, help="Batch size.")
-    parser.add_argument("--cle_dim", default=128, type=int, help="Character-level embedding dimension.")
-    parser.add_argument("--cnne_filters", default=128, type=int, help="CNN embedding filters per length.")
+    parser.add_argument("--cle_dim", default=64, type=int, help="Character-level embedding dimension.")
+    parser.add_argument("--cnne_filters", default=32, type=int, help="CNN embedding filters per length.")
     parser.add_argument("--optimizer", default="Adam", type=str, help="Optimizer.")    
-    parser.add_argument("--cnne_max", default=8, type=int, help="Maximum CNN filter length.")
+    parser.add_argument("--cnne_max", default=4, type=int, help="Maximum CNN filter length.")
     parser.add_argument("--epochs", default=5, type=int, help="Number of epochs.")
     parser.add_argument("--recodex", default=False, action="store_true", help="ReCodEx mode.")
     parser.add_argument("--rnn_cell", default="LSTM", type=str, help="RNN cell type.")
@@ -332,8 +333,9 @@ if __name__ == "__main__":
     for i in range(args.epochs):
         network.train_epoch(train, args.batch_size)
 
-        network.evaluate("dev", dev, args.batch_size)
-
+        accuracy = network.evaluate("dev", dev, args.batch_size)
+        print("{:.2f}".format(100 * accuracy))
+        
     # Predict test data
     with open("{}/nli_test.txt".format(args.logdir), "w", encoding="utf-8") as test_file:
         languages = network.predict(test, args.batch_size)
