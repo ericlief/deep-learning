@@ -21,11 +21,11 @@ class Network:
             self.charseq_lens = tf.placeholder(tf.int32, [None], name="charseq_lens")
             self.charseq_ids = tf.placeholder(tf.int32, [None, None], name="charseq_ids")
             self.tags = tf.placeholder(tf.int32, [None, None], name="tags")            
-            #self.languages = tf.placeholder(tf.int32, [None, None], name="languages")
-            self.languages = tf.placeholder(tf.int32, [None], name="languages")
+            self.languages = tf.placeholder(tf.int32, [None, 1], name="languages")
+            #self.languages = tf.placeholder(tf.int32, [None], name="languages")
             
             self.is_training = tf.placeholder(tf.bool, [], name="is_training")
-            labels_hot = tf.one_hot(self.languages, num_langs)
+            #labels_hot = tf.one_hot(self.languages, num_langs)
             
             # TODO: Training.
             # Define:
@@ -150,15 +150,15 @@ class Network:
 
             # Generate `self.predictions`.
             self.predictions = tf.argmax(logits, axis=-1) # 3rd dim!
-            self.predictions = tf.one_hot(self.predictions, num_langs)
+            #self.predictions = tf.one_hot(self.predictions, num_langs)
             print(self.predictions)     # -> (?,?)
             
             # Generate `weights` as a 1./0. mask of valid/invalid words (using `tf.sequence_mask`).
             #weights = tf.sequence_mask(self.sentence_lens, dtype=tf.float32)
             
             # Training
-            #loss = tf.losses.sparse_softmax_cross_entropy(labels=self.languages, logits=logits, weights=weights)
-            loss = tf.losses.softmax_cross_entropy(onehot_labels=labels_hot, logits=logits)
+            loss = tf.losses.sparse_softmax_cross_entropy(labels=self.languages, logits=logits)
+            #loss = tf.losses.softmax_cross_entropy(onehot_labels=labels_hot, logits=logits)
             global_step = tf.train.create_global_step()
             
             # For adaptable learning rate if desired
@@ -197,7 +197,8 @@ class Network:
             self.training = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step)              
             
             # Summaries
-            self.current_accuracy, self.update_accuracy = tf.metrics.accuracy(labels_hot, self.predictions)
+            #self.current_accuracy, self.update_accuracy = tf.metrics.accuracy(labels_hot, self.predictions)
+            self.current_accuracy, self.update_accuracy = tf.metrics.accuracy(self.languages, self.predictions)
             self.current_loss, self.update_loss = tf.metrics.mean(loss, weights=tf.size(self.sentence_lens))
             self.reset_metrics = tf.variables_initializer(tf.get_collection(tf.GraphKeys.METRIC_VARIABLES))
 
@@ -231,7 +232,7 @@ class Network:
         while not train.epoch_finished():
             sentence_lens, word_ids, charseq_ids, charseqs, charseq_lens, tags, levels, prompts, languages = \
                 train.next_batch(batch_size)
-            #languages = np.reshape(languages, [-1,1])
+            languages = np.reshape(languages, [-1,1])
             #print(languages, languages.shape, charseq_ids.shape, word_ids.shape)
             self.session.run(self.reset_metrics)
             self.session.run([self.training, self.summaries["train"]],
@@ -246,6 +247,7 @@ class Network:
         while not dataset.epoch_finished():
             sentence_lens, word_ids, charseq_ids, charseqs, charseq_lens, tags, levels, prompts, languages = \
                 dataset.next_batch(batch_size)
+            languages = np.reshape(languages, [-1,1])            
             self.session.run([self.update_accuracy, self.update_loss],
                              {self.sentence_lens: sentence_lens,
                               self.charseqs: charseqs, self.charseq_lens: charseq_lens,
@@ -265,8 +267,8 @@ class Network:
                                                self.charseqs: charseqs, self.charseq_lens: charseq_lens,
                                                self.word_ids: word_ids, self.charseq_ids: charseq_ids,
                                                self.tags: tags, self.is_training: False})
-            languages.extend(tf.argmax(predictions, axis=1))
-
+            #languages.extend(tf.argmax(predictions, axis=1))
+            languages.extend(predictions)
         return languages	
 
 
@@ -282,8 +284,8 @@ if __name__ == "__main__":
     # Parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", default=50, type=int, help="Batch size.")
-    parser.add_argument("--cle_dim", default=64, type=int, help="Character-level embedding dimension.")
-    parser.add_argument("--cnne_filters", default=32, type=int, help="CNN embedding filters per length.")
+    parser.add_argument("--cle_dim", default=16, type=int, help="Character-level embedding dimension.")
+    parser.add_argument("--cnne_filters", default=8, type=int, help="CNN embedding filters per length.")
     parser.add_argument("--optimizer", default="Adam", type=str, help="Optimizer.")    
     parser.add_argument("--cnne_max", default=4, type=int, help="Maximum CNN filter length.")
     parser.add_argument("--epochs", default=5, type=int, help="Number of epochs.")
@@ -293,8 +295,8 @@ if __name__ == "__main__":
     parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
     parser.add_argument("--learning_rate", default=0.001, type=float, help="Initial learning rate.") 
     parser.add_argument("--learning_rate_final", default=None, type=float, help="Final learning rate.")    
-    parser.add_argument("--we_dim", default=128, type=int, help="Word embedding dimension.")
-    parser.add_argument("--tag_dim", default=32, type=int, help="Tag embedding dimension.")    
+    parser.add_argument("--we_dim", default=32, type=int, help="Word embedding dimension.")
+    parser.add_argument("--tag_dim", default=16, type=int, help="Tag embedding dimension.")    
     parser.add_argument("--momentum", default=None, type=float, help="Momentum.")
     parser.add_argument("--dropout", default=0, type=float, help="Dropout rate.")
     parser.add_argument("--bn", default=False, type=bool, help="Batch normalization.")
