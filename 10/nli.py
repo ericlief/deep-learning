@@ -22,8 +22,7 @@ class Network:
             self.charseq_ids = tf.placeholder(tf.int32, [None, None], name="charseq_ids")
             self.tags = tf.placeholder(tf.int32, [None, None], name="tags")            
             self.languages = tf.placeholder(tf.int32, [None, 1], name="languages")
-            #self.languages = tf.placeholder(tf.int32, [None], name="languages")
-            
+             
             self.is_training = tf.placeholder(tf.bool, [], name="is_training")
             #labels_hot = tf.one_hot(self.languages, num_langs)
             
@@ -32,24 +31,6 @@ class Network:
             # - loss in `loss`
             # - training in `self.training`
             # - predictions in `self.predictions`
-
-            #num_units = args.rnn_cell_dim
-            #if args.rnn_cell == 'RNN':
-                #cell_fw = tf.nn.rnn_cell.BasicRNNCell(num_units)
-                #cell_bw = tf.nn.rnn_cell.BasicRNNCell(num_units)
-
-            #elif args.rnn_cell == 'GRU':
-                #cell_fw = tf.nn.rnn_cell.GRUCell(num_units)
-                #cell_bw = tf.nn.rnn_cell.GRUCell(num_units)       
-            
-            #else: # LSTM default
-                #cell_fw = tf.nn.rnn_cell.BasicLSTMCell(num_units)
-                #cell_bw = tf.nn.rnn_cell.BasicLSTMCell(num_units)
-
-            ## Add dropout
-            #if args.dropout:
-                #cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout)
-                #cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout)
             
             # Use pretrained embeddings or create word embeddings (WE) for num_words of dimensionality args.we_dim
             # using `tf.get_variable`. Then embed self.word_ids according to the word embeddings, by utilizing
@@ -83,8 +64,8 @@ class Network:
                     conv = tf.layers.conv1d(inputs=embedded_chars, filters=args.cnne_filters, kernel_size=kernel_size,
                                                 strides=1, padding='valid', activation=None)       # valid=only fully inside text       
                     # Apply batch norm
-                    if args.bn:
-                        conv = tf.layers.batch_normalization(conv, training=self.is_training, name='cnne_BN_'+str(kernel_size))
+                    #if args.bn:
+                        #conv = tf.layers.batch_normalization(conv, training=self.is_training, name='cnne_BN_'+str(kernel_size))
                     pooling = tf.reduce_max(conv, axis=1)
                     features.append(pooling)
                 
@@ -109,8 +90,6 @@ class Network:
             if args.dropout_word:
                 with tf.name_scope('dropout_word'):
                     embedded_inputs = tf.nn.dropout(embedded_inputs, keep_prob=1-args.dropout_word)
-                
-                   
             
             features = []  
             for kernel_size in range(2, args.cnne_max + 1):
@@ -139,21 +118,6 @@ class Network:
                 with tf.name_scope('dropout_text'):
                     text_features = tf.nn.dropout(text_features, keep_prob=1-args.dropout_text)
                 
-            
-            ## Using tf.nn.bidirectional_dynamic_rnn, process the embedded inputs.
-            ## Use given rnn_cell (different for fwd and bwd direction) and self.sentence_lens.
-            #outputs = embedded_inputs
-            #for i in range(0, args.layers):  # add more layers (optional)
-                #outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell_fw=cell_fw, cell_bw=cell_bw, inputs=outputs, 
-                                                             #sequence_length=self.sentence_lens, dtype=tf.float32)
-                
-            ## Concatenate the outputs for fwd and bwd directions (in the third dimension).
-            #output = tf.concat(outputs, axis=2)
-            #print('out', output)  # -> (?, ?, 128)
-            ##output = tf.layers.flatten(output)
-            ##output = tf.reshape(output, [-1, 
-            ##print('flat out', output)          
-            
             
             # Add a dense layer (without activation) into num_languages classes and
             # store result in `logits`.
@@ -300,30 +264,26 @@ if __name__ == "__main__":
 
     # Parse arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("--batch_size", default=50, type=int, help="Batch size.")
+    parser.add_argument("--we_dim", default=32, type=int, help="Word embedding dimension.")
     parser.add_argument("--cle_dim", default=16, type=int, help="Character-level embedding dimension.")
+    parser.add_argument("--tag_dim", default=16, type=int, help="Tag embedding dimension.")    
     parser.add_argument("--cnne_filters", default=8, type=int, help="CNN embedding filters per length.")
-    parser.add_argument("--optimizer", default="Adam", type=str, help="Optimizer.")    
     parser.add_argument("--cnne_max", default=4, type=int, help="Maximum CNN filter length.")
     parser.add_argument("--epochs", default=5, type=int, help="Number of epochs.")
-    parser.add_argument("--recodex", default=False, action="store_true", help="ReCodEx mode.")
-    parser.add_argument("--rnn_cell", default="LSTM", type=str, help="RNN cell type.")
-    parser.add_argument("--rnn_cell_dim", default=64, type=int, help="RNN cell dimension.")
-    parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
-    parser.add_argument("--learning_rate", default=0.001, type=float, help="Initial learning rate.") 
-    parser.add_argument("--learning_rate_final", default=None, type=float, help="Final learning rate.")    
-    parser.add_argument("--we_dim", default=32, type=int, help="Word embedding dimension.")
-    parser.add_argument("--tag_dim", default=16, type=int, help="Tag embedding dimension.")    
-    parser.add_argument("--momentum", default=None, type=float, help="Momentum.")
     parser.add_argument("--dropout_word", default=0, type=float, help="Dropout rate.")
     parser.add_argument("--dropout_text", default=0, type=float, help="Dropout rate.")    
+    parser.add_argument("--batch_size", default=50, type=int, help="Batch size.")
     parser.add_argument("--bn", default=False, type=bool, help="Batch normalization.")
+    parser.add_argument("--optimizer", default="Adam", type=str, help="Optimizer.")    
     parser.add_argument("--clip_gradient", default=None, type=float, help="Norm for gradient clipping.")
     parser.add_argument("--layers", default=1, type=int, help="Number of rnn layers.")
-    parser.add_argument("--anal", default=False, type=bool, help="Filter output with analyzer.")
     parser.add_argument("--decay_rate", default=0, type=float, help="Decay rate.")
     parser.add_argument("--use_wv", default=False, type=bool, help="Use pretrained word embeddings.")
-
+    parser.add_argument("--recodex", default=False, action="store_true", help="ReCodEx mode.")
+    parser.add_argument("--learning_rate", default=0.001, type=float, help="Initial learning rate.") 
+    parser.add_argument("--learning_rate_final", default=None, type=float, help="Final learning rate.")    
+    parser.add_argument("--momentum", default=None, type=float, help="Momentum.")
+    parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
     args = parser.parse_args()
 
     # Create logdir name
@@ -345,7 +305,7 @@ if __name__ == "__main__":
     print('num training sents', num_sents)
     print('num batches per epoch', batches_per_epoch)
     print('num words = {}, num chars = {}, num tags = {}, num langs = {}, using we_dim = {}'.format(num_words, num_chars, num_tags, num_langs, args.we_dim))
-    print('we dim = {}, cle = {}, tag dim = {}, rnn dim = {}'.format(args.we_dim, args.cle_dim, args.tag_dim, args.rnn_cell_dim))
+    print('we dim = {}, cle = {}, tag dim = {}'.format(args.we_dim, args.cle_dim, args.tag_dim))
       
     # Construct the network
     network = Network(threads=args.threads)
