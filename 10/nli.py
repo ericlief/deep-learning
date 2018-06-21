@@ -59,7 +59,7 @@ class Network:
             features = []  
             for kernel_size in range(2, args.cnne_max + 1):
                 #with tf.name_scope("cnne-maxpool-%s" % kernel_size):
-                with tf.name_scope("cnne-maxpool-%s" % kernel_size):
+                with tf.variable_scope("cnne-maxpool-%s" % kernel_size):
                     
                     conv = tf.layers.conv1d(inputs=embedded_chars, filters=args.cnne_filters, kernel_size=kernel_size,
                                                 strides=1, padding='valid', activation=None)       # valid=only fully inside text       
@@ -93,7 +93,7 @@ class Network:
             
             features = []  
             for kernel_size in range(2, args.cnne_max + 1):
-                with tf.name_scope("text-maxpool-%s" % kernel_size):
+                with tf.variable_scope("text-maxpool-%s" % kernel_size):
                     conv = tf.layers.conv1d(inputs=embedded_inputs, filters=args.cnne_filters, kernel_size=kernel_size,
                                                 strides=1, padding='valid', activation=None)       # valid=only fully inside text       
                     
