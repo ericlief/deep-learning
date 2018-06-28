@@ -32,8 +32,9 @@ class MorphoDataset:
             self.charseqs = [[self.alphabet_map['<pad>']]]
             self.charseq_ids = []
             self.strings = []
+            self.index_to_word = []
 
-    def __init__(self, filename, train=None, shuffle_batches=True, max_sentences=None, add_bow_eow=False):
+    def __init__(self, filename, train=None, shuffle_batches=True, max_sentences=None, add_bow_eow=False, lowercase=False):
         """Load dataset from file in vertical format.
 
         Arguments:
@@ -73,6 +74,8 @@ class MorphoDataset:
                             if add_bow_eow:
                                 factor.charseqs[-1].append(factor.alphabet_map['<bow>'])
                             for c in word:
+                                if lowercase: # added lc
+                                    c = c.lower()
                                 if c not in factor.alphabet_map:  # this will add the new chars to map/list of letters
                                     if train:
                                         c = '<unk>'
@@ -86,10 +89,16 @@ class MorphoDataset:
                     
                         # Word-level information
                         if word not in factor.words_map:
-                            if train:
+                            if lowercase: # * added lc
+                                word = word.lower()
+                            if train: # dev/test, do not add to vocab lists
                                 word = '<unk>'
-                            else:
+                            else: # training so add
                                 factor.words_map[word] = len(factor.words)
+                                
+                                # add index_to_word 
+                                #factor.index_to_word[len(factor.words)] = 
+                                
                                 factor.words.append(word)
                         factor.word_ids[-1].append(factor.words_map[word])
                     in_sentence = True
@@ -98,8 +107,8 @@ class MorphoDataset:
                     if max_sentences is not None and len(self._factors[self.FORMS].word_ids) >= max_sentences:
                         break
         
-        print(self._factors[0].charseqs[:10])
-        print(self._factors[0].charseq_ids[:2])        
+        #print(self._factors[0].charseqs[:10])
+        #print(self._factors[0].charseq_ids[:2])        
         # Compute sentence lengths
         sentences = len(self._factors[self.FORMS].word_ids)
         self._sentence_lens = np.zeros([sentences], np.int32)
@@ -171,13 +180,16 @@ class MorphoDataset:
 
         # Word-level data
         batch_word_ids = []
+        #batch_strings = [] # added to return string repr
         for factor in self._factors:
             batch_word_ids.append(np.zeros([batch_size, max_sentence_len], np.int32))
+            #batch_strings.append([])
             for i in range(batch_size):
                 batch_word_ids[-1][i, 0:batch_sentence_lens[i]] = factor.word_ids[batch_perm[i]]
-
+                #batch_strings[-1].append(factor.strings[batch_perm[i]]) # added strings for all factors
         if not including_charseqs:
-            return self._sentence_lens[batch_perm], batch_word_ids
+            #return self._sentence_lens[batch_perm], batch_word_ids, batch_strings # added last
+            return self._sentence_lens[batch_perm], batch_word_ids # added last
 
         # Character-level data
         batch_charseq_ids, batch_charseqs, batch_charseq_lens = [], [], []
@@ -198,4 +210,5 @@ class MorphoDataset:
             for i in range(len(charseqs)):
                 batch_charseqs[-1][i, 0:len(charseqs[i])] = charseqs[i]
 
+        #return self._sentence_lens[batch_perm], batch_word_ids, batch_charseq_ids, batch_charseqs, batch_charseq_lens, batch_strings # added last
         return self._sentence_lens[batch_perm], batch_word_ids, batch_charseq_ids, batch_charseqs, batch_charseq_lens
