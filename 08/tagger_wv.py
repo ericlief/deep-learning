@@ -366,8 +366,8 @@ if __name__ == "__main__":
     print('num batches per epoch', batches_per_epoch)
     print('vocab size = {}, using we_dim = {}'.format(vocab_size, args.we_dim))
     
-    analyzer_dictionary = MorphoAnalyzer("czech-pdt-analysis-dictionary.txt")
-    analyzer_guesser = MorphoAnalyzer("czech-pdt-analysis-guesser.txt")
+    analyzer_dictionary = MorphoAnalyzer(home + "/data/cs/czech-pdt-analysis-dictionary.txt")
+    analyzer_guesser = MorphoAnalyzer(home + "/data/cs/czech-pdt-analysis-guesser.txt")
 
     # Construct the network
     network = Network(threads=args.threads)
@@ -379,7 +379,8 @@ if __name__ == "__main__":
 
     if args.use_wv:
         #file = args.use_wv
-        file = home + '/we/word2vec_cs400.txt_embedded.npy' 
+        #file = home + '/we/word2vec_cs400.txt_embedded.npy' 
+        file = home + '/we/word2vec_cs' + str(args.we_dim) + '.txt_embedded.npy'
         print("Loading pretrained word2vec embeddings from file {}\n".format(file))
         we = np.load(file) # we matrix
         network.session.run(network.word_embeddings.assign(we))
