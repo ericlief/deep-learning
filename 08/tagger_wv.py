@@ -341,6 +341,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_wv", default=False, type=bool, help="Use pretrained word embeddings from file")
     parser.add_argument("--l2", default=0, type=float, help="Use l2 regularization.")
 
+
     args = parser.parse_args()
 
     # Create logdir name
@@ -376,17 +377,19 @@ if __name__ == "__main__":
 
 
     # Get pretrained embeddings and params
-
+    print('Using we?', args.use_wv)
     if args.use_wv:
         #file = args.use_wv
         file = home + '/we/word2vec_cs400.txt_embedded.npy' 
         print("Loading pretrained word2vec embeddings from file {}\n".format(file))
         we = np.load(file) # we matrix
-        network.session.run(network.word_embeddings.assign(we))
+        s = network.session.run(network.word_embeddings.assign(we))
+        print('out of assign', s)
     
 
     # Train
     for i in range(args.epochs):
+        print('training epoch ', i)
         network.train_epoch(train, args.batch_size)
         accuracy = network.evaluate("dev", dev, args.batch_size)
         print("{:.2f}".format(100 * accuracy))
