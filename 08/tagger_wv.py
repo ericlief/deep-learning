@@ -290,6 +290,7 @@ if __name__ == "__main__":
     import re
     import sys
     from collections import defaultdict
+    from os.path import expanduser
     
     def find_analysis_tag(form, tag):
 
@@ -351,25 +352,13 @@ if __name__ == "__main__":
     if not os.path.exists("logs"): os.mkdir("logs") # TF 1.6 will do this by itself
 
     # Load the data
+    home = expanduser('~')
+    
     #train = morpho_dataset.MorphoDataset("/home/liefe/data/cs/czech-pdt-train.txt")
-#    train = morpho_dataset.MorphoDataset("/home/liefe/data/cs/train.txt", lowercase=True)
-#    dev = morpho_dataset.MorphoDataset("/home/liefe/data/cs/czech-pdt-dev.txt", train=train, shuffle_batches=False, lowercase=True)
-#    test = morpho_dataset.MorphoDataset("/home/liefe/data/cs/czech-pdt-test.txt", train=train, shuffle_batches=False, lowercase=True)
-    
-    train = morpho_dataset.MorphoDataset("/afs/ms/u/l/liefe/data/cs/czech-pdt-train.txt", lowercase=True)
-    dev = morpho_dataset.MorphoDataset("/afs/ms/u/l/liefe/data/cs/czech-pdt-dev.txt", train=train, shuffle_batches=False, lowercase=True)
-    test = morpho_dataset.MorphoDataset("/afs/ms/u/l/liefe/data/cs/czech-pdt-test.txt", train=train, shuffle_batches=False, lowercase=True)
+    train = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-train.txt", lowercase=True)
+    dev = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-dev.txt", train=train, shuffle_batches=False, lowercase=True)
+    test = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-test.txt", train=train, shuffle_batches=False, lowercase=True)
 
-    # Load whole gensim wv model with pretrained embeddings
-    #model = Word2Vec.load('word2vec_cs')
-    #wv = model.wv.syn0 # word2vec embeddings
-    #vocab = model.wv.vocab # list of Vocab objects with (cnt, index, sample_int)
-    #index_to_word = model.wv.index2word 
-    
-    # Get pretrained embeddings and params
-    #wv_file = '/home/liefe/py/we/word2vec_cs.txt'
-    #wv, index_to_word, word_to_index = load_w2v.get_params(wv_file)
-    
     # Data stats
     vocab_size = len(train.factors[train.FORMS].words)
     batches_per_epoch = len(train.sentence_lens) // args.batch_size
@@ -385,52 +374,13 @@ if __name__ == "__main__":
     network.construct(args, len(train.factors[train.FORMS].words), len(train.factors[train.FORMS].alphabet),
                       len(train.factors[train.TAGS].words))
 
-    #sys.exit(1)
-    
-    # Load pretrained Word2Vec embeddings
-    
-    
-    
-    #file = "/home/liefe/py/wv_data/word2vec_cs_bin"
-    #file = '/afs/ms/u/l/liefe/we/word2vec_cs.bin'
-    #if args.use_wv:
-        #print("Load word2vec file {}\n".format(file))
-        #we = np.random.uniform(-0.25, 0.25, (vocab_size, args.we_dim))                
-        #with open(file, "rb") as f:
-            #header = f.readline()
-            #wv_vocab_size, wv_we_dim = map(int, header.split())
-            ##if wv_we_dim > args.we_dim:
-                ##sys.exit("we_dim < predtrained embedding")
-            ##word_to_index = {}
-            ##binary_len = np.dtype('float32').itemsize * wv_we_dim
-            #binary_len = np.dtype('float32').itemsize * args.we_dim
-            
-            #for line in range(wv_vocab_size):
-                #word = []
-                #while True:
-                    #ch = f.read(1)
-                    #if ch == ' ':
-                        #word = ''.join(word)
-                        #break
-                    #if ch != '\n':
-                        #word.append(ch)   
-                        #print('here')
-                ##idx = vocab_processor.vocabulary_.get(word)
-                #idx = train.factors[train.FORMS].words_map.get(word)
-                #print(word, idx)
-                #if idx != 0: # 0 returned by get() if not in vocab
-                    #we[idx] = np.fromstring(f.read(binary_len), dtype='float32')
-                    #word_to_index[word] = idx
-                #else:
-                    #f.read(binary_len) # skip    
-    ## Set we var
-    
+
+    # Get pretrained embeddings and params
+
     if args.use_wv:
         #file = args.use_wv
-        file = '/afs/ms/u/l/liefe/we/word2vec_cs128.txt_embedded.npy' 
+        file = home + '/we/word2vec_cs400.txt_embedded.npy' 
         print("Loading pretrained word2vec embeddings from file {}\n".format(file))
-        #we = np.random.uniform(-0.25, 0.25, (vocab_size, args.we_dim))                
-        #with open(file, "rb") as f: 
         we = np.load(file) # we matrix
         network.session.run(network.word_embeddings.assign(we))
     
