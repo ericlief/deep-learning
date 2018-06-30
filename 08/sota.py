@@ -452,14 +452,15 @@ if __name__ == "__main__":
                     #f.read(binary_len) # skip    
     ## Set we var
     
-    #if args.use_wv:
-        ##file = args.use_wv
-        #file = '/home/liefe/py/wv_data/word2vec_cs64.txt_embedded.npy'
-        #print("Loading pretrained word2vec embeddings from file {}\n".format(file))
-        ##we = np.random.uniform(-0.25, 0.25, (vocab_size, args.we_dim))                
-        ##with open(file, "rb") as f: 
-        #we = np.load(file) # we matrix
-        #network.session.run(network.word_embeddings.assign(we))
+    if args.use_wv:
+        print('Using we ', args.use_wv)
+        #file = args.use_wv
+        file = '/home/liefe/py/wv_data/word2vec_cs64.txt_embedded.npy'
+        print("Loading pretrained word2vec embeddings from file {}\n".format(file))
+        #we = np.random.uniform(-0.25, 0.25, (vocab_size, args.we_dim))                
+        #with open(file, "rb") as f: 
+        we = np.load(file) # we matrix
+        network.session.run(network.word_embeddings.assign(we))
     
 
     # Train
@@ -483,6 +484,7 @@ if __name__ == "__main__":
         forms = dev.factors[dev.FORMS].strings
         #lemmas = dev.factors[dev.LEMMAS].strings        
         tags = network.predict(dev, args.batch_size)
+        print('forms, tags', len(forms), len(tags))
 
         for s in range(len(forms)):
             for i in range(len(forms[s])):
@@ -507,6 +509,7 @@ if __name__ == "__main__":
         forms = test.factors[test.FORMS].strings
         #lemmas = test.factors[test.LEMMAS].strings
         tags = network.predict(test, args.batch_size)
+        print('forms, tags', len(forms), len(tags))
 
         for s in range(len(forms)):
             for i in range(len(forms[s])):
