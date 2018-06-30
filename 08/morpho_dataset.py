@@ -57,6 +57,7 @@ class MorphoDataset:
             for line in file:
                 line = line.rstrip("\r\n")
                 if line:
+                    line = line.lower()
                     columns = line.split("\t")
                     for f in range(self.FACTORS):
                         factor = self._factors[f]
@@ -74,8 +75,8 @@ class MorphoDataset:
                             if add_bow_eow:
                                 factor.charseqs[-1].append(factor.alphabet_map['<bow>'])
                             for c in word:
-                                if lowercase: # added lc
-                                    c = c.lower()
+                                #if lowercase and f == self.FORMS: # added lc
+                                    #c = c.lower()
                                 if c not in factor.alphabet_map:  # this will add the new chars to map/list of letters
                                     if train:
                                         c = '<unk>'
@@ -88,9 +89,9 @@ class MorphoDataset:
                         factor.charseq_ids[-1].append(factor.charseqs_map[word])  # charseqs_ids = seq to int/rank
                     
                         # Word-level information
-                        if word not in factor.words_map:
-                            if lowercase: # * added lc
-                                word = word.lower()
+                        if word not in factor.words_map:  
+                            #if lowercase: # * added lc
+                                #word = word.lower()
                             if train: # dev/test, do not add to vocab lists
                                 word = '<unk>'
                             else: # training so add
