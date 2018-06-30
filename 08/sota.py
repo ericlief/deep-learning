@@ -450,12 +450,13 @@ if __name__ == "__main__":
                     #word_to_index[word] = idx
                 #else:
                     #f.read(binary_len) # skip    
-    ## Set we var
     
+    # Set we var
+    print('Using we ', args.use_wv)    
     if args.use_wv:
-        print('Using we ', args.use_wv)
         #file = args.use_wv
-        file = '/home/liefe/py/wv_data/word2vec_cs64.txt_embedded.npy'
+        #file = '/home/liefe/py/wv_data/word2vec_cs64.txt_embedded.npy'
+        file = home + '/we/word2vec_cs' + str(args.we_dim) + '.txt_embedded.npy'
         print("Loading pretrained word2vec embeddings from file {}\n".format(file))
         #we = np.random.uniform(-0.25, 0.25, (vocab_size, args.we_dim))                
         #with open(file, "rb") as f: 
