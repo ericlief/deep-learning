@@ -168,6 +168,7 @@ if __name__ == "__main__":
     import datetime
     import os
     import re
+    from os.path import expanduser
 
     # Fix random seed
     np.random.seed(42)
@@ -187,16 +188,28 @@ if __name__ == "__main__":
     )
     if not os.path.exists("logs"): os.mkdir("logs") # TF 1.6 will do this by itself
 
-    train = morpho_dataset.MorphoDataset("czech-pdt-train.txt")
-    dev = morpho_dataset.MorphoDataset("czech-pdt-dev.txt", train=train, shuffle_batches=False)
-    test = morpho_dataset.MorphoDataset("czech-pdt-test.txt", train=train, shuffle_batches=False)
+
+
+
+    home = expanduser('~')
+    train = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-train.txt", lowercase=True)
+    dev = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-dev.txt", train=train, shuffle_batches=False, lowercase=True)
+    test = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-test.txt", train=train, shuffle_batches=False, lowercase=True)
+    #train = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-train.txt", lowercase=False)
+    
+    
+    #train = morpho_dataset.MorphoDataset("czech-pdt-train.txt")
+    #dev = morpho_dataset.MorphoDataset("czech-pdt-dev.txt", train=train, shuffle_batches=False)
+    #test = morpho_dataset.MorphoDataset("czech-pdt-test.txt", train=train, shuffle_batches=False)
 
     batches = len(train.sentence_lens) // args.batch_size
     print('num sents', len(train.sentence_lens))
     print('num batches', batches)
     
-    analyzer_dictionary = MorphoAnalyzer("czech-pdt-analysis-dictionary.txt")
-    analyzer_guesser = MorphoAnalyzer("czech-pdt-analysis-guesser.txt")
+    #analyzer_dictionary = MorphoAnalyzer("czech-pdt-analysis-dictionary.txt")
+    #analyzer_guesser = MorphoAnalyzer("czech-pdt-analysis-guesser.txt")
+    analyzer_dictionary = MorphoAnalyzer(home + "/data/cs/czech-pdt-analysis-dictionary.txt")
+    analyzer_guesser = MorphoAnalyzer(home + "/data/cs/czech-pdt-analysis-guesser.txt")
 
     # Construct the network
     network = Network(threads=args.threads)
