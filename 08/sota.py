@@ -87,15 +87,16 @@ class Network:
             
             # Create word embeddings (WE) for num_words of dimensionality args.we_dim
             # using `tf.get_variable`.
-            #if args.use_wv:
-                ##word_embeddings = tf.get_variable('word_embeddings', shape=wv.shape, initializer=tf.constant_initializer(wv), trainable=False)
-                ##word_embeddings = tf.Variable(tf.random_uniform([vocab_size, args.we_dim], -1.0, 1.0, name='word_embeddings'))
-                #self.word_embeddings = tf.Variable(tf.zeros([vocab_size, args.we_dim], tf.float32))
+            if args.use_wv:
+                print('addding pretrained we to graph', args.use_wv)
+                #word_embeddings = tf.get_variable('word_embeddings', shape=wv.shape, initializer=tf.constant_initializer(wv), trainable=False)
+                #word_embeddings = tf.Variable(tf.random_uniform([vocab_size, args.we_dim], -1.0, 1.0, name='word_embeddings'))
+                self.word_embeddings = tf.Variable(tf.zeros([vocab_size, args.we_dim], tf.float32))
             
-            #else: 
-                #self.word_embeddings = tf.get_variable('word_embeddings', [num_words, args.we_dim])            
+            else: 
+                self.word_embeddings = tf.get_variable('word_embeddings', [num_words, args.we_dim])            
             
-            self.word_embeddings = tf.get_variable('word_embeddings', [num_words, args.we_dim])            
+            #self.word_embeddings = tf.get_variable('word_embeddings', [num_words, args.we_dim])            
             
             # Embed self.word_ids according to the word embeddings, by utilizing
             # `tf.nn.embedding_lookup`.
@@ -343,7 +344,7 @@ if __name__ == "__main__":
     parser.add_argument("--layers", default=1, type=int, help="Number of rnn layers.")
     parser.add_argument("--anal", default=False, type=bool, help="Filter output with analyzer.")
     parser.add_argument("--decay_rate", default=0, type=float, help="Decay rate.")
-    #parser.add_argument("--use_wv", default=False, type=bool, help="Use pretrained word embeddings from file")
+    parser.add_argument("--use_wv", default=False, type=bool, help="Use pretrained word embeddings from file")
     #parser.add_argument("--l2", default=0, type=float, help="Use l2 regularization.")
 
     args = parser.parse_args()
