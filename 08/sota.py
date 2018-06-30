@@ -358,12 +358,12 @@ if __name__ == "__main__":
     if not os.path.exists("logs"): os.mkdir("logs") # TF 1.6 will do this by itself
 
     home = expanduser('~')
-    #train = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-train.txt", lowercase=True)
-    #dev = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-dev.txt", train=train, shuffle_batches=False, lowercase=True)
-    #test = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-test.txt", train=train, shuffle_batches=False, lowercase=True)
-    train = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-train.txt", lowercase=False)
-    dev = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-dev.txt", train=train, shuffle_batches=False, lowercase=False)
-    test = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-test.txt", train=train, shuffle_batches=False, lowercase=False)
+    train = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-train.txt", lowercase=True)
+    dev = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-dev.txt", train=train, shuffle_batches=False, lowercase=True)
+    test = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-test.txt", train=train, shuffle_batches=False, lowercase=True)
+    #train = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-train.txt", lowercase=False)
+    #dev = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-dev.txt", train=train, shuffle_batches=False, lowercase=False)
+    #test = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-test.txt", train=train, shuffle_batches=False, lowercase=False)
 
     # Data stats
     vocab_size = len(train.factors[train.FORMS].words)
