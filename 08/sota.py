@@ -290,6 +290,8 @@ if __name__ == "__main__":
     import re
     import sys
     from collections import defaultdict
+    from os.path import expanduser
+    import faulthandler
     
     def find_analysis_tag(form, tag):
 
@@ -350,7 +352,7 @@ if __name__ == "__main__":
     )
     if not os.path.exists("logs"): os.mkdir("logs") # TF 1.6 will do this by itself
 
-
+    home = expanduser('~')
     train = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-train.txt", lowercase=True)
     dev = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-dev.txt", train=train, shuffle_batches=False, lowercase=True)
     test = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-test.txt", train=train, shuffle_batches=False, lowercase=True)
