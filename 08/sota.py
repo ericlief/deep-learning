@@ -87,13 +87,16 @@ class Network:
             
             # Create word embeddings (WE) for num_words of dimensionality args.we_dim
             # using `tf.get_variable`.
-            if args.use_wv:
-                #word_embeddings = tf.get_variable('word_embeddings', shape=wv.shape, initializer=tf.constant_initializer(wv), trainable=False)
-                #word_embeddings = tf.Variable(tf.random_uniform([vocab_size, args.we_dim], -1.0, 1.0, name='word_embeddings'))
-                self.word_embeddings = tf.Variable(tf.zeros([vocab_size, args.we_dim], tf.float32))
+            #if args.use_wv:
+                ##word_embeddings = tf.get_variable('word_embeddings', shape=wv.shape, initializer=tf.constant_initializer(wv), trainable=False)
+                ##word_embeddings = tf.Variable(tf.random_uniform([vocab_size, args.we_dim], -1.0, 1.0, name='word_embeddings'))
+                #self.word_embeddings = tf.Variable(tf.zeros([vocab_size, args.we_dim], tf.float32))
             
-            else: 
-                self.word_embeddings = tf.get_variable('word_embeddings', [num_words, args.we_dim])            
+            #else: 
+                #self.word_embeddings = tf.get_variable('word_embeddings', [num_words, args.we_dim])            
+            
+            self.word_embeddings = tf.get_variable('word_embeddings', [num_words, args.we_dim])            
+            
             # Embed self.word_ids according to the word embeddings, by utilizing
             # `tf.nn.embedding_lookup`.
             embedded_words = tf.nn.embedding_lookup(self.word_embeddings, self.word_ids) # which word ids?
@@ -157,13 +160,14 @@ class Network:
             # Training
             
             # L2 regularization
-            l2 = 0
-            if args.l2:
-                tv = tf.trainable_variables()
-                l2 = args.l2 * tf.reduce_sum([tf.nn.l2_loss(v) for v in tv 
-                                                     if not('bias' in v.name or 'Bias' in v.name or 'noreg' in v.name)]) 
-            loss = tf.losses.sparse_softmax_cross_entropy(labels=self.tags, logits=logits, weights=weights) + l2
+            #l2 = 0
+            #if args.l2:
+                #tv = tf.trainable_variables()
+                #l2 = args.l2 * tf.reduce_sum([tf.nn.l2_loss(v) for v in tv 
+                                                     #if not('bias' in v.name or 'Bias' in v.name or 'noreg' in v.name)]) 
+            #loss = tf.losses.sparse_softmax_cross_entropy(labels=self.tags, logits=logits, weights=weights) + l2
             
+            loss = tf.losses.sparse_softmax_cross_entropy(labels=self.tags, logits=logits, weights=weights)            
             global_step = tf.train.create_global_step()
             
             # For adaptable learning rate if desired
@@ -339,8 +343,8 @@ if __name__ == "__main__":
     parser.add_argument("--layers", default=1, type=int, help="Number of rnn layers.")
     parser.add_argument("--anal", default=False, type=bool, help="Filter output with analyzer.")
     parser.add_argument("--decay_rate", default=0, type=float, help="Decay rate.")
-    parser.add_argument("--use_wv", default=False, type=bool, help="Use pretrained word embeddings from file")
-    parser.add_argument("--l2", default=0, type=float, help="Use l2 regularization.")
+    #parser.add_argument("--use_wv", default=False, type=bool, help="Use pretrained word embeddings from file")
+    #parser.add_argument("--l2", default=0, type=float, help="Use l2 regularization.")
 
     args = parser.parse_args()
 
@@ -353,9 +357,12 @@ if __name__ == "__main__":
     if not os.path.exists("logs"): os.mkdir("logs") # TF 1.6 will do this by itself
 
     home = expanduser('~')
-    train = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-train.txt", lowercase=True)
-    dev = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-dev.txt", train=train, shuffle_batches=False, lowercase=True)
-    test = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-test.txt", train=train, shuffle_batches=False, lowercase=True)
+    #train = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-train.txt", lowercase=True)
+    #dev = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-dev.txt", train=train, shuffle_batches=False, lowercase=True)
+    #test = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-test.txt", train=train, shuffle_batches=False, lowercase=True)
+    train = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-train.txt", lowercase=False)
+    dev = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-dev.txt", train=train, shuffle_batches=False, lowercase=False)
+    test = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-test.txt", train=train, shuffle_batches=False, lowercase=False)
 
     # Data stats
     vocab_size = len(train.factors[train.FORMS].words)
@@ -444,14 +451,14 @@ if __name__ == "__main__":
                     #f.read(binary_len) # skip    
     ## Set we var
     
-    if args.use_wv:
-        #file = args.use_wv
-        file = '/home/liefe/py/wv_data/word2vec_cs64.txt_embedded.npy'
-        print("Loading pretrained word2vec embeddings from file {}\n".format(file))
-        #we = np.random.uniform(-0.25, 0.25, (vocab_size, args.we_dim))                
-        #with open(file, "rb") as f: 
-        we = np.load(file) # we matrix
-        network.session.run(network.word_embeddings.assign(we))
+    #if args.use_wv:
+        ##file = args.use_wv
+        #file = '/home/liefe/py/wv_data/word2vec_cs64.txt_embedded.npy'
+        #print("Loading pretrained word2vec embeddings from file {}\n".format(file))
+        ##we = np.random.uniform(-0.25, 0.25, (vocab_size, args.we_dim))                
+        ##with open(file, "rb") as f: 
+        #we = np.load(file) # we matrix
+        #network.session.run(network.word_embeddings.assign(we))
     
 
     # Train
