@@ -350,26 +350,11 @@ if __name__ == "__main__":
     )
     if not os.path.exists("logs"): os.mkdir("logs") # TF 1.6 will do this by itself
 
-    # Load the data
-    #train = morpho_dataset.MorphoDataset("/home/liefe/data/cs/czech-pdt-train.txt")
-    train = morpho_dataset.MorphoDataset("/home/liefe/data/cs/train.txt", lowercase=True)
-    dev = morpho_dataset.MorphoDataset("/home/liefe/data/cs/czech-pdt-dev.txt", train=train, shuffle_batches=False, lowercase=True)
-    test = morpho_dataset.MorphoDataset("/home/liefe/data/cs/czech-pdt-test.txt", train=train, shuffle_batches=False, lowercase=True)
-    
-    #train = morpho_dataset.MorphoDataset("/afs/ms/u/l/liefe/data/cs/train.txt")
-    #dev = morpho_dataset.MorphoDataset("/afs/ms/u/l/liefe/data/cs/czech-pdt-dev.txt", train=train, shuffle_batches=False)
-    #test = morpho_dataset.MorphoDataset("/afs/ms/u/l/liefe/data/cs/czech-pdt-test.txt", train=train, shuffle_batches=False)
 
-    # Load whole gensim wv model with pretrained embeddings
-    #model = Word2Vec.load('word2vec_cs')
-    #wv = model.wv.syn0 # word2vec embeddings
-    #vocab = model.wv.vocab # list of Vocab objects with (cnt, index, sample_int)
-    #index_to_word = model.wv.index2word 
-    
-    # Get pretrained embeddings and params
-    #wv_file = '/home/liefe/py/we/word2vec_cs.txt'
-    #wv, index_to_word, word_to_index = load_w2v.get_params(wv_file)
-    
+    train = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-train.txt", lowercase=True)
+    dev = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-dev.txt", train=train, shuffle_batches=False, lowercase=True)
+    test = morpho_dataset.MorphoDataset(home + "/data/cs/czech-pdt-test.txt", train=train, shuffle_batches=False, lowercase=True)
+
     # Data stats
     vocab_size = len(train.factors[train.FORMS].words)
     batches_per_epoch = len(train.sentence_lens) // args.batch_size
@@ -377,9 +362,41 @@ if __name__ == "__main__":
     print('num batches per epoch', batches_per_epoch)
     print('vocab size = {}, using we_dim = {}'.format(vocab_size, args.we_dim))
     
-    analyzer_dictionary = MorphoAnalyzer("czech-pdt-analysis-dictionary.txt")
-    analyzer_guesser = MorphoAnalyzer("czech-pdt-analysis-guesser.txt")
+    analyzer_dictionary = MorphoAnalyzer(home + "/data/cs/czech-pdt-analysis-dictionary.txt")
+    analyzer_guesser = MorphoAnalyzer(home + "/data/cs/czech-pdt-analysis-guesser.txt")
 
+
+    ## Load the data
+    #train = morpho_dataset.MorphoDataset("/home/liefe/data/cs/czech-pdt-train.txt", lowercase=True)
+    ##train = morpho_dataset.MorphoDataset("/home/liefe/data/cs/train.txt", lowercase=True)
+    #dev = morpho_dataset.MorphoDataset("/home/liefe/data/cs/czech-pdt-dev.txt", train=train, shuffle_batches=False, lowercase=True)
+    #test = morpho_dataset.MorphoDataset("/home/liefe/data/cs/czech-pdt-test.txt", train=train, shuffle_batches=False, lowercase=True)
+    
+    ##train = morpho_dataset.MorphoDataset("/afs/ms/u/l/liefe/data/cs/train.txt")
+    ##dev = morpho_dataset.MorphoDataset("/afs/ms/u/l/liefe/data/cs/czech-pdt-dev.txt", train=train, shuffle_batches=False)
+    ##test = morpho_dataset.MorphoDataset("/afs/ms/u/l/liefe/data/cs/czech-pdt-test.txt", train=train, shuffle_batches=False)
+
+    ## Load whole gensim wv model with pretrained embeddings
+    ##model = Word2Vec.load('word2vec_cs')
+    ##wv = model.wv.syn0 # word2vec embeddings
+    ##vocab = model.wv.vocab # list of Vocab objects with (cnt, index, sample_int)
+    ##index_to_word = model.wv.index2word 
+    
+    ## Get pretrained embeddings and params
+    ##wv_file = '/home/liefe/py/we/word2vec_cs.txt'
+    ##wv, index_to_word, word_to_index = load_w2v.get_params(wv_file)
+    
+    ## Data stats
+    #vocab_size = len(train.factors[train.FORMS].words)
+    #batches_per_epoch = len(train.sentence_lens) // args.batch_size
+    #print('num training sents', len(train.sentence_lens))
+    #print('num batches per epoch', batches_per_epoch)
+    #print('vocab size = {}, using we_dim = {}'.format(vocab_size, args.we_dim))
+    
+    #analyzer_dictionary = MorphoAnalyzer("czech-pdt-analysis-dictionary.txt")
+    #analyzer_guesser = MorphoAnalyzer("czech-pdt-analysis-guesser.txt")
+
+        
     # Construct the network
     network = Network(threads=args.threads)
     network.construct(args, len(train.factors[train.FORMS].words), len(train.factors[train.FORMS].alphabet),
@@ -451,7 +468,7 @@ if __name__ == "__main__":
             #print("", file=test_file)
 
     # Predict dev data
-    with open("{}/tagger_sota_dev.txt".format(args.logdir), "w") as tast_file:
+    with open("{}/tagger_sota_dev.txt".format(args.logdir), "w") as test_file:
  
         forms = dev.factors[dev.FORMS].strings
         #lemmas = dev.factors[dev.LEMMAS].strings        
