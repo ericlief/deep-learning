@@ -82,8 +82,8 @@ class Network:
 
             # Add dropout
             if args.dropout:
-                cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True)
-                cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True)
+                cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)
+                cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)
             
             # Create word embeddings (WE) for num_words of dimensionality args.we_dim
             # using `tf.get_variable`.
@@ -161,14 +161,15 @@ class Network:
             # Training
             
             # L2 regularization
-            #l2 = 0
-            #if args.l2:
-                #tv = tf.trainable_variables()
-                #l2 = args.l2 * tf.reduce_sum([tf.nn.l2_loss(v) for v in tv 
-                                                     #if not('bias' in v.name or 'Bias' in v.name or 'noreg' in v.name)]) 
-            #loss = tf.losses.sparse_softmax_cross_entropy(labels=self.tags, logits=logits, weights=weights) + l2
+            l2 = 0
+            if args.l2:
+                print('performing L2 normalization')
+                tv = tf.trainable_variables()
+                l2 = args.l2 * tf.reduce_sum([tf.nn.l2_loss(v) for v in tv 
+                                                     if not('bias' in v.name or 'Bias' in v.name or 'noreg' in v.name)]) 
+            loss = tf.losses.sparse_softmax_cross_entropy(labels=self.tags, logits=logits, weights=weights) + l2
             
-            loss = tf.losses.sparse_softmax_cross_entropy(labels=self.tags, logits=logits, weights=weights)            
+            #loss = tf.losses.sparse_softmax_cross_entropy(labels=self.tags, logits=logits, weights=weights)            
             global_step = tf.train.create_global_step()
             
             # For adaptable learning rate if desired
@@ -345,7 +346,7 @@ if __name__ == "__main__":
     parser.add_argument("--anal", default=False, type=bool, help="Filter output with analyzer.")
     parser.add_argument("--decay_rate", default=0, type=float, help="Decay rate.")
     parser.add_argument("--use_wv", default=False, type=bool, help="Use pretrained word embeddings from file")
-    #parser.add_argument("--l2", default=0, type=float, help="Use l2 regularization.")
+    parser.add_argument("--l2", default=0, type=float, help="Use l2 regularization.")
 
     args = parser.parse_args()
 
