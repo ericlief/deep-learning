@@ -81,9 +81,9 @@ class Network:
                 cell_bw = tf.nn.rnn_cell.BasicLSTMCell(num_units)
 
             # Add dropout
-            if args.dropout:
-                cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)
-                cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)
+            #if args.dropout:
+                #cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, input_size=self._inputs.get_shape()[-1] if args.layers == 1 else tf.TensorShape(num_units), input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)
+                #cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, input_size=self._inputs.get_shape()[-1] if args.layers == 1 else tf.TensorShape(num_units), input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)
             
             # Create word embeddings (WE) for num_words of dimensionality args.we_dim
             # using `tf.get_variable`.
@@ -138,6 +138,12 @@ class Network:
             # Using tf.nn.bidirectional_dynamic_rnn, process the embedded inputs.
             # Use given rnn_cell (different for fwd and bwd direction) and self.sentence_lens.
             outputs = embedded_inputs
+            
+            # Add dropout
+            if args.dropout:
+                cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, input_size=outputs.get_shape()[-1] if args.layers == 1 else tf.TensorShape(num_units), input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)
+                cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, input_size=outputs.get_shape()[-1] if args.layers == 1 else tf.TensorShape(num_units), input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)            
+           
             for i in range(0, args.layers):  # add more layers (optional)
                 outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell_fw=cell_fw, cell_bw=cell_bw, inputs=outputs, 
                                                              sequence_length=self.sentence_lens, dtype=tf.float32)
