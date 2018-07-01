@@ -180,6 +180,8 @@ class Network:
 
             # Generate `self.predictions`.
             self.predictions = tf.argmax(logits, axis=2) # 3rd dim!
+            print('pred', self.predictions)
+            
             #print(self.predictions     
             
             # Generate `weights` as a 1./0. mask of valid/invalid words (using `tf.sequence_mask`).
@@ -311,7 +313,8 @@ class Network:
                                 self.word_ids: word_ids[train.FORMS], self.charseq_ids: charseq_ids[train.FORMS],
                                 self.is_training: False})) #add
                                 #self.wv: wv, self.wv_ids: wv_ids}))
-            return tags
+        print('predicted tags size: ', len(tags), len(tags[0]))
+        return tags
 
 
 if __name__ == "__main__":
