@@ -103,7 +103,7 @@ class Network:
             embedded_words = tf.nn.embedding_lookup(self.word_embeddings, self.word_ids) # which word ids?
             
             if args.bn_we:
-                embedded_words = tf.layers.batch_normalization(embedded_words, training=self.is_training, name='we_bn_'+str(kernel_size))
+                embedded_words = tf.layers.batch_normalization(embedded_words, training=self.is_training, name='we_bn')
                    
             
             # Convolutional word embeddings (CNNE)
@@ -112,7 +112,7 @@ class Network:
             embedded_chars = tf.nn.embedding_lookup(char_embeddings, self.charseqs)
             
             if args.bn_cle:
-                embedded_chars = tf.layers.batch_normalization(embedded_chars, training=self.is_training, name='we_cle_'+str(kernel_size))
+                embedded_chars = tf.layers.batch_normalization(embedded_chars, training=self.is_training, name='we_cle')
                    
              
             # TODO: For kernel sizes of {2..args.cnne_max}, do the following:
@@ -143,7 +143,7 @@ class Network:
             embedded_chars = tf.nn.embedding_lookup(concat_features, self.charseq_ids)  
             
             if args.bn_cnne:
-                embedded_chars = tf.layers.batch_normalization(embedded_chars, training=self.is_training, name='cnne_bn_'+str(kernel_size))
+                embedded_chars = tf.layers.batch_normalization(embedded_chars, training=self.is_training, name='cnne_bn')
              
             
             # Concatenate the word embeddings (computed above) and the CNNE (in this order).
@@ -154,7 +154,7 @@ class Network:
             outputs = embedded_inputs
             
             if args.bn_concat:
-                outputs = tf.layers.batch_normalization(outputs, training=self.is_training, name='concat_bn_'+str(kernel_size))
+                outputs = tf.layers.batch_normalization(outputs, training=self.is_training, name='concat_bn')
                      
             # Add dropout wrapper 
             if args.dropout:
@@ -169,7 +169,7 @@ class Network:
             output = tf.concat(outputs, axis=2)
             
             if args.bn_out:
-                output = tf.layers.batch_normalization(out, training=self.is_training, name='out_bn_'+str(kernel_size))
+                output = tf.layers.batch_normalization(out, training=self.is_training, name='out_bn')
                      
             #print('out', output) # (?, ?, 108)
             
