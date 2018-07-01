@@ -102,11 +102,19 @@ class Network:
             # `tf.nn.embedding_lookup`.
             embedded_words = tf.nn.embedding_lookup(self.word_embeddings, self.word_ids) # which word ids?
             
+            if args.bn_we:
+                embedded_words = tf.layers.batch_normalization(embedded_words, training=self.is_training, name='we_bn_'+str(kernel_size))
+                   
+            
             # Convolutional word embeddings (CNNE)
             # Generate character embeddings for num_chars of dimensionality args.cle_dim.
             char_embeddings = tf.get_variable('char_embeddings', [num_chars, args.cle_dim])
             embedded_chars = tf.nn.embedding_lookup(char_embeddings, self.charseqs)
             
+            if args.bn_cle:
+                embedded_words = tf.layers.batch_normalization(embedded_chars, training=self.is_training, name='we_cle_'+str(kernel_size))
+                   
+             
             # TODO: For kernel sizes of {2..args.cnne_max}, do the following:
             # - use `tf.layers.conv1d` on input embedded characters, with given kernel size
             #   and `args.cnne_filters`; use `VALID` padding, stride 1 and no activation.
@@ -120,10 +128,11 @@ class Network:
                 conv = tf.layers.conv1d(inputs=embedded_chars, filters=args.cnne_filters, kernel_size=kernel_size,
                                             strides=1, padding='valid', activation=None)       # valid=only fully inside text       
                 # Apply batch norm
-                if args.bn:
-                    conv = tf.layers.batch_normalization(conv, training=self.is_training, name='cnn_layer_BN_'+str(kernel_size))
+                #if args.bn:
+                    #conv = tf.layers.batch_normalization(conv, training=self.is_training, name='cnn_layer_BN_'+str(kernel_size))
                 pooling = tf.reduce_max(conv, axis=1)
-                features.append(pooling)
+                act = tf.nn.relu(pooling)
+                features.append(act)
             
             # Concatenate the computed features (in the order of kernel sizes 2..args.cnne_max).
             # Consequently, each word from `self.charseqs` is represented using convolutional embedding
@@ -132,6 +141,11 @@ class Network:
             # Generate CNNEs of all words in the batch by indexing the just computed embeddings
             # by self.charseq_ids (using tf.nn.embedding_lookup).
             embedded_chars = tf.nn.embedding_lookup(concat_features, self.charseq_ids)  
+            
+            if args.bn_cnne:
+                embedded_chars = tf.layers.batch_normalization(embedded_chars, training=self.is_training, name='cnne_bn_'+str(kernel_size))
+             
+            
             # Concatenate the word embeddings (computed above) and the CNNE (in this order).
             embedded_inputs = tf.concat([embedded_words, embedded_chars], axis=2)            
             
@@ -139,7 +153,10 @@ class Network:
             # Use given rnn_cell (different for fwd and bwd direction) and self.sentence_lens.
             outputs = embedded_inputs
             
-            # Add dropout
+            if args.bn_concat:
+                outputs = tf.layers.batch_normalization(outputs, training=self.is_training, name='concat_bn_'+str(kernel_size))
+                     
+            # Add dropout wrapper 
             if args.dropout:
                 cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, input_size=outputs.get_shape()[-1] if args.layers == 1 else tf.TensorShape(num_units), input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)
                 cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, input_size=outputs.get_shape()[-1] if args.layers == 1 else tf.TensorShape(num_units), input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)            
@@ -150,6 +167,10 @@ class Network:
                 
             # Concatenate the outputs for fwd and bwd directions (in the third dimension).
             output = tf.concat(outputs, axis=2)
+            
+            if args.bn_out:
+                output = tf.layers.batch_normalization(out, training=self.is_training, name='cnne_bn_'+str(kernel_size))
+                     
             #print('out', output) # (?, ?, 108)
             
             # Add a dense layer (without activation) into num_tags classes and
@@ -235,8 +256,6 @@ class Network:
             with summary_writer.as_default():
                 tf.contrib.summary.initialize(session=self.session, graph=self.session.graph)
 
-            
-            
 
 
     def train_epoch(self, train, batch_size):
@@ -346,7 +365,11 @@ if __name__ == "__main__":
     parser.add_argument("--we_dim", default=64, type=int, help="Word embedding dimension.")
     parser.add_argument("--momentum", default=None, type=float, help="Momentum.")
     parser.add_argument("--dropout", default=0, type=float, help="Dropout rate.")
-    parser.add_argument("--bn", default=False, type=bool, help="Batch normalization.")
+    parser.add_argument("--bn_we", default=False, type=bool, help="Batch normalization.")
+    parser.add_argument("--bn_cle", default=False, type=bool, help="Batch normalization.")
+    parser.add_argument("--bn_cnne", default=False, type=bool, help="Batch normalization.")
+    parser.add_argument("--bn_concat", default=False, type=bool, help="Batch normalization.")
+    parser.add_argument("--bn_out", default=False, type=bool, help="Batch normalization.")
     parser.add_argument("--clip_gradient", default=None, type=float, help="Norm for gradient clipping.")
     parser.add_argument("--layers", default=1, type=int, help="Number of rnn layers.")
     parser.add_argument("--anal", default=False, type=bool, help="Filter output with analyzer.")
