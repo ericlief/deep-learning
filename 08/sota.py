@@ -112,7 +112,7 @@ class Network:
             embedded_chars = tf.nn.embedding_lookup(char_embeddings, self.charseqs)
             
             if args.bn_cle:
-                embedded_words = tf.layers.batch_normalization(embedded_chars, training=self.is_training, name='we_cle_'+str(kernel_size))
+                embedded_chars = tf.layers.batch_normalization(embedded_chars, training=self.is_training, name='we_cle_'+str(kernel_size))
                    
              
             # TODO: For kernel sizes of {2..args.cnne_max}, do the following:
@@ -169,7 +169,7 @@ class Network:
             output = tf.concat(outputs, axis=2)
             
             if args.bn_out:
-                output = tf.layers.batch_normalization(out, training=self.is_training, name='cnne_bn_'+str(kernel_size))
+                output = tf.layers.batch_normalization(out, training=self.is_training, name='out_bn_'+str(kernel_size))
                      
             #print('out', output) # (?, ?, 108)
             
