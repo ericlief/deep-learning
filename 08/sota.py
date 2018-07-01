@@ -169,7 +169,7 @@ class Network:
             output = tf.concat(outputs, axis=2)
             
             if args.bn_out:
-                output = tf.layers.batch_normalization(out, training=self.is_training, name='out_bn')
+                output = tf.layers.batch_normalization(output, training=self.is_training, name='out_bn')
                      
             #print('out', output) # (?, ?, 108)
             
