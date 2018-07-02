@@ -127,7 +127,7 @@ class Network:
                 conv = tf.layers.conv1d(inputs=embedded_chars, filters=args.cnne_filters, kernel_size=kernel_size,
                                             strides=1, padding='valid', activation=None)       # valid=only fully inside text       
                 # Apply batch norm
-                if args.bn_c2:
+                if args.bn_c_2:
                     conv = tf.layers.batch_normalization(conv, training=self.is_training, name='cnn_layer_BN_'+str(kernel_size))
                 pooling = tf.reduce_max(conv, axis=1)
                 act = tf.nn.relu(pooling)
@@ -141,7 +141,7 @@ class Network:
             # by self.charseq_ids (using tf.nn.embedding_lookup).
             embedded_chars = tf.nn.embedding_lookup(concat_features, self.charseq_ids)  
             
-            if args.bn_c3:
+            if args.bn_c_3:
                 embedded_chars = tf.layers.batch_normalization(embedded_chars, training=self.is_training, name='cnne_bn')
              
             
@@ -368,9 +368,9 @@ if __name__ == "__main__":
     parser.add_argument("--momentum", default=None, type=float, help="Momentum.")
     parser.add_argument("--dropout", default=0, type=float, help="Dropout rate.")
     parser.add_argument("--bn_we", default=False, type=bool, help="Batch normalization.")
-    parser.add_argument("--bn_c1", default=False, type=bool, help="Batch normalization.")
-    parser.add_argument("--bn_c2", default=False, type=bool, help="Batch normalization.")
-    parser.add_argument("--bn_c3", default=False, type=bool, help="Batch normalization.")
+    parser.add_argument("--bn_c_1", default=False, type=bool, help="Batch normalization.")
+    parser.add_argument("--bn_c_2", default=False, type=bool, help="Batch normalization.")
+    parser.add_argument("--bn_c_3", default=False, type=bool, help="Batch normalization.")
     parser.add_argument("--bn_in", default=False, type=bool, help="Batch normalization.")
     parser.add_argument("--bn_out", default=False, type=bool, help="Batch normalization.")    
     parser.add_argument("--clip_gradient", default=None, type=float, help="Norm for gradient clipping.")
