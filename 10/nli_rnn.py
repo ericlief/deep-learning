@@ -79,7 +79,7 @@ class Network:
                 cell_bw = tf.nn.rnn_cell.GRUCell(args.cle_dim) 
                 
                 # Add dropout wrapper 
-                if args.dropout:
+                if args.dropout_char:
                     cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, input_size=embedded_chars.get_shape()[-1], input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)
                     cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, input_size=embedded_chars.get_shape()[-1], input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)            
                                       
@@ -113,7 +113,7 @@ class Network:
                 cell_fw = tf.nn.rnn_cell.GRUCell(args.rnn_dim)
                 cell_bw = tf.nn.rnn_cell.GRUCell(args.rnn_dim)             
                 
-                if args.dropout:
+                if args.dropout_text:
                     cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, input_size=embedded_inputs.get_shape()[-1], input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)
                     cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, input_size=embedded_inputs.get_shape()[-1], input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)            
                               
