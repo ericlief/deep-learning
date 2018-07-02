@@ -57,7 +57,8 @@ class MorphoDataset:
             for line in file:
                 line = line.rstrip("\r\n")
                 if line:
-                    line = line.lower()
+                    
+                    #line = line.lower()
                     columns = line.split("\t")
                     for f in range(self.FACTORS):
                         factor = self._factors[f]
@@ -90,8 +91,8 @@ class MorphoDataset:
                     
                         # Word-level information
                         if word not in factor.words_map:  
-                            #if lowercase: # * added lc
-                                #word = word.lower()
+                            if lowercase and f == self.FORMS:  #  LOWERCASE only word forms 
+                                word = word.lower()
                             if train: # dev/test, do not add to vocab lists
                                 word = '<unk>'
                             else: # training so add
