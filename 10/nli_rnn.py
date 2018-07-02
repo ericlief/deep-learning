@@ -77,7 +77,12 @@ class Network:
             with tf.name_scope('cle'):
                 cell_fw = tf.nn.rnn_cell.GRUCell(args.cle_dim)
                 cell_bw = tf.nn.rnn_cell.GRUCell(args.cle_dim) 
-                        
+                
+                # Add dropout wrapper 
+                if args.dropout:
+                    cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, input_size=embedded_chars.get_shape()[-1], input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)
+                    cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, input_size=embedded_chars.get_shape()[-1], input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)            
+                                      
                 # Run cell in limited scope fw and bw
                 # in order to encode char information (subword factors)
                 # The cell is size of char dim, e.g. 32 -> output (?,32)
@@ -108,6 +113,10 @@ class Network:
                 cell_fw = tf.nn.rnn_cell.GRUCell(args.rnn_dim)
                 cell_bw = tf.nn.rnn_cell.GRUCell(args.rnn_dim)             
                 
+                if args.dropout:
+                    cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, input_size=embedded_inputs.get_shape()[-1], input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)
+                    cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, input_size=embedded_inputs.get_shape()[-1], input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)            
+                              
                 _, states = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, embedded_inputs, self.sentence_lens, dtype=tf.float32, scope='text')
                 
                 sum_states = tf.reduce_sum(states, axis=0)
