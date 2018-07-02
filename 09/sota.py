@@ -90,8 +90,8 @@ class Network:
             
             # Add dropout wrapper 
             if args.dropout:
-                cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, input_size=source_encoded.get_shape()[-1] if args.layers == 1 else tf.TensorShape(args.rnn_dim), input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)
-                cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, input_size=source_encoded.get_shape()[-1] if args.layers == 1 else tf.TensorShape(args.rnn_dim), input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)            
+                cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, input_size=source_encoded.get_shape()[-1], input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)
+                cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, input_size=source_encoded.get_shape()[-1], input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)            
                      
             source_outputs, source_states = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, source_encoded, self.source_seq_lens, dtype=tf.float32, scope='encoder')
             
