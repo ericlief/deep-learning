@@ -50,17 +50,16 @@ class Network:
 
     def construct(self, args, num_words, num_chars, num_tags):
         with self.session.graph.as_default():
+            
             # Inputs
             self.sentence_lens = tf.placeholder(tf.int32, [None], name="sentence_lens")
             self.word_ids = tf.placeholder(tf.int32, [None, None], name="word_ids")
-            #self.wv_ids = tf.placeholder(tf.int32, [None, None], name="word_ids_wv")
             self.charseqs = tf.placeholder(tf.int32, [None, None], name="charseqs")
             self.charseq_lens = tf.placeholder(tf.int32, [None], name="charseq_lens")
             self.charseq_ids = tf.placeholder(tf.int32, [None, None], name="charseq_ids")
             self.tags = tf.placeholder(tf.int32, [None, None], name="tags")
             self.is_training = tf.placeholder(tf.bool, [], name="is_training")
-            #self.wv = tf.placeholder(tf.float32, [None, None], name="pretrained_word_embedding")
-            #self.we
+            
             # TODO: Training.
             # Define:
             # - loss in `loss`
@@ -111,7 +110,7 @@ class Network:
             char_embeddings = tf.get_variable('char_embeddings', [num_chars, args.cle_dim])
             embedded_chars = tf.nn.embedding_lookup(char_embeddings, self.charseqs)
             
-            if args.bn_cle:
+            if args.bn_c_1:
                 embedded_chars = tf.layers.batch_normalization(embedded_chars, training=self.is_training, name='we_cle')
                    
              
@@ -128,8 +127,8 @@ class Network:
                 conv = tf.layers.conv1d(inputs=embedded_chars, filters=args.cnne_filters, kernel_size=kernel_size,
                                             strides=1, padding='valid', activation=None)       # valid=only fully inside text       
                 # Apply batch norm
-                #if args.bn:
-                    #conv = tf.layers.batch_normalization(conv, training=self.is_training, name='cnn_layer_BN_'+str(kernel_size))
+                if args.bn_c2:
+                    conv = tf.layers.batch_normalization(conv, training=self.is_training, name='cnn_layer_BN_'+str(kernel_size))
                 pooling = tf.reduce_max(conv, axis=1)
                 act = tf.nn.relu(pooling)
                 features.append(act)
@@ -142,7 +141,7 @@ class Network:
             # by self.charseq_ids (using tf.nn.embedding_lookup).
             embedded_chars = tf.nn.embedding_lookup(concat_features, self.charseq_ids)  
             
-            if args.bn_cnne:
+            if args.bn_c3:
                 embedded_chars = tf.layers.batch_normalization(embedded_chars, training=self.is_training, name='cnne_bn')
              
             
@@ -153,7 +152,7 @@ class Network:
             # Use given rnn_cell (different for fwd and bwd direction) and self.sentence_lens.
             outputs = embedded_inputs
             
-            if args.bn_concat:
+            if args.bn_in:
                 outputs = tf.layers.batch_normalization(outputs, training=self.is_training, name='concat_bn')
                      
             # Add dropout wrapper 
@@ -369,10 +368,11 @@ if __name__ == "__main__":
     parser.add_argument("--momentum", default=None, type=float, help="Momentum.")
     parser.add_argument("--dropout", default=0, type=float, help="Dropout rate.")
     parser.add_argument("--bn_we", default=False, type=bool, help="Batch normalization.")
-    parser.add_argument("--bn_cle", default=False, type=bool, help="Batch normalization.")
-    parser.add_argument("--bn_cnne", default=False, type=bool, help="Batch normalization.")
-    parser.add_argument("--bn_concat", default=False, type=bool, help="Batch normalization.")
-    parser.add_argument("--bn_out", default=False, type=bool, help="Batch normalization.")
+    parser.add_argument("--bn_c1", default=False, type=bool, help="Batch normalization.")
+    parser.add_argument("--bn_c2", default=False, type=bool, help="Batch normalization.")
+    parser.add_argument("--bn_c3", default=False, type=bool, help="Batch normalization.")
+    parser.add_argument("--bn_in", default=False, type=bool, help="Batch normalization.")
+    parser.add_argument("--bn_out", default=False, type=bool, help="Batch normalization.")    
     parser.add_argument("--clip_gradient", default=None, type=float, help="Norm for gradient clipping.")
     parser.add_argument("--layers", default=1, type=int, help="Number of rnn layers.")
     parser.add_argument("--anal", default=False, type=bool, help="Filter output with analyzer.")
