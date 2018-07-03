@@ -93,6 +93,7 @@ class Network:
                 cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, input_size=source_encoded.get_shape()[-1], input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)
                 cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, input_size=source_encoded.get_shape()[-1], input_keep_prob=1-args.dropout, output_keep_prob=1-args.dropout, variational_recurrent=True, dtype=tf.float32)            
                      
+            # Run embedded source through bdrnn 
             source_outputs, source_states = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, source_encoded, self.source_seq_lens, dtype=tf.float32, scope='encoder')
             
             #print('source outputs', source_outputs, source_states, 'source states', source_states, 'batch size', tf.shape(source_states)[0]) # (?, 200) = encoded seq embedding 
@@ -492,6 +493,8 @@ if __name__ == "__main__":
         lemmas = network.predict(dev, args.batch_size)        
         #lemmas = test.factors[test.LEMMAS].strings
         tags = network.predict(dev, args.batch_size)
+        print('forms, tags', len(forms), len(tags))
+        
         #forms = dev.factors[dev.FORMS].strings
         #lemmas = dev.factors[dev.LEMMAS].strings        
         #tags = network.predict(dev, args.batch_size)
@@ -510,11 +513,11 @@ if __name__ == "__main__":
                     lemma = find_analysis(form, lemma)
 
 
-                #print("{}\t_\t{}".format(form, tag), file=test_file)
-                print("{}\t{}\t".format(form, lemma), file=test_file)
-    
+                #print("{}\t_\t{}".format(form, lemma))
+                print("{}\t{}\t_".format(form, lemma))
+                print("{}\t{}\t_".format(form, lemma, file=test_file))
                     #print("{}\t_\t{}".format(forms[s][i], test.factors[test.TAGS].words[tags[s][i]]), file=test_file)
-                print("", file=test_file)
+            print("", file=test_file)
                 
     # Predict test data
     with open("{}/lemmatizer_sota_test.txt".format(args.logdir), "w") as test_file:
@@ -548,9 +551,10 @@ if __name__ == "__main__":
 
 
                 #print("{}\t_\t{}".format(form, tag), file=test_file)
-                print("{}\t{}\t".format(form, lemma), file=test_file)
-    
+                #print("{}\t{}\t".format(form, lemma), file=test_file)
+                #print("{}\t{}\t_".format(form, lemma))
+                print("{}\t{}\t_".format(form, lemma, file=test_file))    
                     #print("{}\t_\t{}".format(forms[s][i], test.factors[test.TAGS].words[tags[s][i]]), file=test_file)
-                print("", file=test_file)
+            print("", file=test_file)
 
         
