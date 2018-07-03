@@ -32,21 +32,6 @@ class Network:
             # - loss in `loss`
             # - training in `self.training`
             # - predictions in `self.predictions`
-            
-            
-            ## Get rnn cell type
-            #num_units = args.rnn_cell_dim
-            #if args.rnn_cell == 'RNN':
-                #cell_fw = tf.nn.rnn_cell.BasicRNNCell(num_units)
-                #cell_bw = tf.nn.rnn_cell.BasicRNNCell(num_units)
-                
-            #elif args.rnn_cell == 'LSTM':
-                #cell_fw = tf.nn.rnn_cell.BasicLSTMCell(num_units)
-                #cell_bw = tf.nn.rnn_cell.BasicLSTMCell(num_units)
-                
-            #else: 
-                #cell_fw = tf.nn.rnn_cell.GRUCell(num_units)
-                #cell_bw = tf.nn.rnn_cell.GRUCell(num_units)            
                         
             # Use pretrained embeddings or create word embeddings (WE) for num_words of dimensionality args.we_dim
             # using `tf.get_variable`. Then embed self.word_ids according to the word embeddings, by utilizing
@@ -94,10 +79,6 @@ class Network:
                 # Lookup charseqs by id
                 embedded_charseqs = tf.nn.embedding_lookup(char_states, self.charseq_ids)
 
-            ## Concatenate the word embeddings (computed above) and the CLE (in this order).
-            #embedded_inputs = tf.concat([embedded_words, embedded_charseqs], axis=-1)
-            
-            
             # Tag embeddings
             tag_embeddings = tf.get_variable('tag_embeddings', [num_words, args.tag_dim])
             embedded_tags = tf.nn.embedding_lookup(tag_embeddings, self.tags) 
@@ -125,83 +106,11 @@ class Network:
         
             averaged_states = tf.reduce_mean(sum_states, axis=-1)
             print('ave states', averaged_states)
-            
-            ## Convolutional word embeddings (CNNE)
-            ## Generate character embeddings for num_chars of dimensionality args.cle_dim.
-            #char_embeddings = tf.get_variable('char_embeddings', [num_chars, args.cle_dim])
-            #embedded_chars = tf.nn.embedding_lookup(char_embeddings, self.charseqs)
-            
-            #if args.dropout_char:
-                #with tf.name_scope('dropout_char'):
-                    #embedded_chars = tf.nn.dropout(embedded_chars, keep_prob=1-args.dropout_char)
-                      
-            ## TODO: For kernel sizes of {2..args.cnne_max}, do the following:
-            ## - use `tf.layers.conv1d` on input embedded characters, with given kernel size
-            ##   and `args.cnne_filters`; use `VALID` padding, stride 1 and no activation.
-            ## - perform channel-wise max-pooling over the whole word, generating output
-            ##   of size `args.cnne_filters` for every word.
-            #features = []  
-            #for kernel_size in range(2, args.cnne_max + 1):
-                ##with tf.name_scope("cnne-maxpool-%s" % kernel_size):
-                #with tf.variable_scope("cnne-maxpool-%s" % kernel_size):
-                    
-                    #conv = tf.layers.conv1d(inputs=embedded_chars, filters=args.cnne_filters, kernel_size=kernel_size,
-                                                #strides=1, padding='valid', activation=None)       # valid=only fully inside text       
-                    #pooling = tf.reduce_max(conv, axis=1)
-                    #features.append(pooling)
-                
-            ## Concatenate the computed features (in the order of kernel sizes 2..args.cnne_max).
-            ## Consequently, each word from `self.charseqs` is represented using convolutional embedding
-            ## (CNNE) of size `(args.cnne_max-1)*args.cnne_filters`.
-            #cnne_features = tf.concat(features, axis=1)   
-            ## Generate CNNEs of all words in the batch by indexing the just computed embeddings
-            ## by self.charseq_ids (using tf.nn.embedding_lookup).
-            #embedded_chars = tf.nn.embedding_lookup(cnne_features, self.charseq_ids)  
-            
-            
-    
- 
-    
-
-            #if args.bn:
-                #embedded_inputs = tf.layers.batch_normalization(embedded_inputs, training=self.is_training, name='word_layer_BN_'+str(kernel_size))
-                ##embedded_inputs = tf.nn.relu(embedded_inputs) 
-            
-            #if args.dropout_word:
-                #with tf.name_scope('dropout_word'):
-                    #embedded_inputs = tf.nn.dropout(embedded_inputs, keep_prob=1-args.dropout_word)
-            
-            #features = []  
-            #for kernel_size in range(2, args.cnne_max + 1):
-                #with tf.variable_scope("text-maxpool-%s" % kernel_size):
-                    #conv = tf.layers.conv1d(inputs=embedded_inputs, filters=args.cnne_filters, kernel_size=kernel_size,
-                                                #strides=1, padding='valid', activation=None)       # valid=only fully inside text       
-                    
-                    ##print(conv) # -> (?,?,8), i.e. 8 filters
-                    #pooling = tf.reduce_max(conv, axis=1)
-                    ##print(pooling) # -> (?,8)
-                    #features.append(pooling)
-            
-            ## Concatenate the computed features (in the order of kernel sizes 2..args.cnne_max).
-            ## Consequently, each word from `self.charseqs` is represented using convolutional embedding
-            ## (CNNE) of size `(args.cnne_max-1)*args.cnne_filters`.
-            #text_features = tf.concat(features, axis=1)     
-            #print(text_features) # -> (?,24)
-            
-            #if args.bn:
-                #text_features = tf.layers.batch_normalization(text_features, training=self.is_training, name='text_layer_BN_'+str(kernel_size))
-                ##text_features = tf.nn.relu(text_features)
-                
-            #if args.dropout_text:
-                #with tf.name_scope('dropout_text'):
-                    #text_features = tf.nn.dropout(text_features, keep_prob=1-args.dropout_text)
-                
-            
+      
             # Add a dense layer (without activation) into num_languages classes and
             # store result in `logits`.
             #logits = tf.layers.dense(text_features, num_langs) 
             #print('logits', logits) # -> (?,?,11) ~ (?, 11)
-            
             
             logits = tf.layers.dense(sum_states, num_langs) 
             print('logits', logits) # -> (?,?,11) ~ (?, 11)
@@ -346,8 +255,6 @@ if __name__ == "__main__":
     parser.add_argument("--we_dim", default=32, type=int, help="Word embedding dimension.")
     parser.add_argument("--cle_dim", default=16, type=int, help="Character-level embedding dimension.")
     parser.add_argument("--tag_dim", default=16, type=int, help="Tag embedding dimension.")    
-    parser.add_argument("--cnne_filters", default=8, type=int, help="CNN embedding filters per length.")
-    parser.add_argument("--cnne_max", default=4, type=int, help="Maximum CNN filter length.")
     parser.add_argument("--rnn_dim", default=32, type=int, help="Maximum CNN filter length.")
     parser.add_argument("--epochs", default=5, type=int, help="Number of epochs.")
     parser.add_argument("--dropout_char", default=0, type=float, help="Dropout rate.")    
