@@ -306,6 +306,13 @@ if __name__ == "__main__":
         accuracy = network.evaluate("dev", dev, args.batch_size)
         print("{:.2f}".format(100 * accuracy))
         
+    # Predict dev data
+    with open("{}/nli_dev.txt".format(args.logdir), "w", encoding="utf-8") as test_file:
+        languages = network.predict(dev, args.batch_size)
+        for language in languages:
+            print(test.vocabulary("languages")[language], file=test_file)
+
+
     # Predict test data
     with open("{}/nli_test.txt".format(args.logdir), "w", encoding="utf-8") as test_file:
         languages = network.predict(test, args.batch_size)
