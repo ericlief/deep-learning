@@ -408,7 +408,7 @@ if __name__ == "__main__":
         total_lemmas = len(combined_lemma_list)
 
         # Keep tag if empty list or tag already in list
-        if total_lemmas== 0 or lemma in combined_lemma_list:
+        if total_lemmas == 0 or lemma in combined_lemma_list:
             return lemma
 
         # Get lemma probs
@@ -510,7 +510,7 @@ if __name__ == "__main__":
 
                 # Use analyzer (optional)
                 if args.anal:
-                    lemma = find_analysis(form, lemma)
+                    lemma = find_analysis_lemma(form, lemma)
 
 
                 #print("{}\t_\t{}".format(form, lemma))
@@ -547,7 +547,7 @@ if __name__ == "__main__":
 
                 # Use analyzer (optional)
                 if args.anal:
-                    lemma = find_analysis(form, lemma)
+                    lemma = find_analysis_lemma(form, lemma)
 
 
                 #print("{}\t_\t{}".format(form, tag), file=test_file)
