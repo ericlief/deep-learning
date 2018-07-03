@@ -397,6 +397,7 @@ if __name__ == "__main__":
     import datetime
     import os
     import re
+    from collections import defaultdict
 
     def find_analysis_lemma(form, lemma):
 
@@ -511,7 +512,7 @@ if __name__ == "__main__":
                 # Use analyzer (optional)
                 if args.anal:
                     lemma = find_analysis_lemma(form, lemma)
-
+                           
 
                 #print("{}\t_\t{}".format(form, lemma))
                 print("{}\t{}\t_".format(form, lemma))
