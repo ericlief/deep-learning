@@ -494,7 +494,7 @@ if __name__ == "__main__":
         lemmas = network.predict(dev, args.batch_size)        
         #lemmas = test.factors[test.LEMMAS].strings
         #tags = network.predict(dev, args.batch_size)
-        print('forms, tags', len(forms), len(tags))
+        print('forms, tags', len(forms), len(lemmas))
         
         #forms = dev.factors[dev.FORMS].strings
         #lemmas = dev.factors[dev.LEMMAS].strings        
