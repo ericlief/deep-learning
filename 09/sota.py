@@ -518,7 +518,7 @@ if __name__ == "__main__":
                     
                 #print("{}\t_\t{}".format(form, lemma))
                 print("{}\t{}\t_".format(form, lemma))
-                print("{}\t{}\t_".format(form, lemma, file=test_file))
+                print("{}\t{}\t_".format(form, lemma), file=test_file)
                     #print("{}\t_\t{}".format(forms[s][i], test.factors[test.TAGS].words[tags[s][i]]), file=test_file)
             print("", file=test_file)
                 
@@ -558,7 +558,7 @@ if __name__ == "__main__":
                 #print("{}\t_\t{}".format(form, tag), file=test_file)
                 #print("{}\t{}\t".format(form, lemma), file=test_file)
                 #print("{}\t{}\t_".format(form, lemma))
-                print("{}\t{}\t_".format(form, lemma, file=test_file))    
+                print("{}\t{}\t_".format(form, lemma), file=test_file)    
                     #print("{}\t_\t{}".format(forms[s][i], test.factors[test.TAGS].words[tags[s][i]]), file=test_file)
             print("", file=test_file)
 
