@@ -493,7 +493,7 @@ if __name__ == "__main__":
         forms = dev.factors[test.FORMS].strings
         lemmas = network.predict(dev, args.batch_size)        
         #lemmas = test.factors[test.LEMMAS].strings
-        tags = network.predict(dev, args.batch_size)
+        #tags = network.predict(dev, args.batch_size)
         print('forms, tags', len(forms), len(tags))
         
         #forms = dev.factors[dev.FORMS].strings
@@ -511,9 +511,11 @@ if __name__ == "__main__":
 
                 # Use analyzer (optional)
                 if args.anal:
-                    lemma = find_analysis_lemma(form, lemma)
-                           
-
+                    new_lemma = find_analysis_lemma(form, lemma)    
+                    if new_lemma != lemma:
+                        print('switched {} with {}'.format(lemma, new_lemma))
+                        lemma = new_lemma
+                    
                 #print("{}\t_\t{}".format(form, lemma))
                 print("{}\t{}\t_".format(form, lemma))
                 print("{}\t{}\t_".format(form, lemma, file=test_file))
@@ -532,7 +534,7 @@ if __name__ == "__main__":
         forms = test.factors[test.FORMS].strings
         lemmas = network.predict(test, args.batch_size)        
         #lemmas = test.factors[test.LEMMAS].strings
-        tags = network.predict(test, args.batch_size)
+        #tags = network.predict(test, args.batch_size)
         #forms = dev.factors[dev.FORMS].strings
         #lemmas = dev.factors[dev.LEMMAS].strings        
         #tags = network.predict(dev, args.batch_size)
@@ -548,8 +550,10 @@ if __name__ == "__main__":
 
                 # Use analyzer (optional)
                 if args.anal:
-                    lemma = find_analysis_lemma(form, lemma)
-
+                    new_lemma = find_analysis_lemma(form, lemma)
+                    if new_lemma != lemma:
+                        print('switched {} with {}'.format(lemma, new_lemma))
+                        lemma = new_lemma
 
                 #print("{}\t_\t{}".format(form, tag), file=test_file)
                 #print("{}\t{}\t".format(form, lemma), file=test_file)
