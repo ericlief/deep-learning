@@ -1,0 +1,31 @@
+#!/bin/bash
+
+
+
+
+#ulimit -t unlimited && nice -n 19 python3 nli.py --we_dim 12 --cle_dim 64 --cnne_filters 32 --cnne_max 8 --epochs 5 --bn False
+#ulimit -t unlimited && nice -n 19 python3 nli.py --we_dim 128 --cle_dim 128 --cnne_filters 128  --cnne_max 5 --epochs 10 --bn False --batch_size 64 --dropout_text .5 --dropout_word .5
+
+ulimit -t unlimited && nice -n 19 python3 nli_rnn.py --rnn_dim 256 --we_dim 256 --cle_dim 256 --tag_dim 256 --epochs 5 --bn False --batch_size 50
+
+#ulimit -t unlimited && nice -n 19 python3 nli.py --we_dim 128 --cle_dim 64 --cnne_filters 32 --cnne_max 8 --epochs 5 --bn False 
+
+#ulimit -t unlimited && nice -n 19 python3 tagger_sota.py --rnn_cell GRU --rnn_cell_dim 256 --we_dim 256 --cle_dim 256 --epochs 10 --bn True --dropout .5 --anal True
+
+#ulimit -t unlimited && nice -n 19 python3 felipe.py --rnn_cell GRU --rnn_cell_dim 140 --we_dim 140 --cle_dim 70 --epochs 1 --bn False --dropout 0 --anal True
+#ulimit -t unlimited && nice -n 19 python3 tagger.py
+
+#ulimit -t unlimited && nice -n 19 python3 tagger_sota.py --rnn_cell LSTM --rnn_cell_dim 200 --we_dim 64 --cle_dim 32 --epochs 10 --bn False --dropout .4
+#ulimit -t unlimited && nice -n 19 python3 tagger_sota.py --rnn_cell LSTM --rnn_cell_dim 200 --we_dim 64 --cle_dim 32 --epochs 10 --bn True  --dropout .2
+#ulimit -t unlimited && nice -n 19 python3 tagger_sota.py --rnn_cell LSTM --rnn_cell_dim 200 --we_dim 64 --cle_dim 32 --epochs 10 --bn True  --dropout .4
+
+# ulimit -t unlimited && nice -n 19 python3 tagger_sota.py --rnn_cell GRU --rnn_cell_dim 200 --we_dim 64 --cle_dim 32 --epochs 10
+# ulimit -t unlimited && nice -n 19 python3 tagger_sota.py --rnn_cell GRU --rnn_cell_dim 200 --we_dim 64 --cle_dim 32 --epochs 10 --bn True
+# ulimit -t unlimited && nice -n 19 python3 tagger_sota.py --rnn_cell GRU --rnn_cell_dim 200 --we_dim 64 --cle_dim 32 --epochs 10 --bn True --droppout .1
+# ulimit -t unlimited && nice -n 19 python3 tagger_sota.py --rnn_cell GRU --rnn_cell_dim 200 --we_dim 64 --cle_dim 32 --epochs 10 --bn True  --droppout .2
+# ulimit -t unlimited && nice -n 19 python3 tagger_sota.py --rnn_cell GRU --rnn_cell_dim 200 --we_dim 64 --cle_dim 32 --epochs 10 --bn True  --droppout .3
+# ulimit -t unlimited && nice -n 19 python3 tagger_sota.py --rnn_cell GRU --rnn_cell_dim 200 --we_dim 64 --cle_dim 32 --epochs 10 --dropout .4 --bn True
+
+# .15
+#ulimit -t unlimited && nice -n 19 python3 tagger_sota.py --rnn_cell LSTM --rnn_cell_dim 64 --learning_rate .001  --we_dim 64 --cle_dim 32 --epochs 10 --dropout 0  --bn False  --optimi\
+#zer Adam                                                                                                                 
