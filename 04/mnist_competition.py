@@ -153,7 +153,7 @@ class Network:
         return self.session.run([self.summaries[dataset], self.accuracy], feed_dict={self.images: images, self.labels: labels, self.is_training: False})
 
     def predict(self, images):
-        return self.session.run([self.predictions],
+        return self.session.run(self.predictions,
                                 {self.images: images, self.is_training: False})
 
 
