@@ -251,9 +251,9 @@ class Network:
                                                self.tags: tags, self.is_training: False})
             #print(np.argmax(predictions, axis=1))
             #print(list(np.argmax(predictions, axis=1)))
-            languages.extend(list(np.argmax(predictions, axis=1)))
+            #languages.extend(list(np.argmax(predictions, axis=1)))
             #languages.extend(list(np.reshape(np.argmax(predictions, axis=1)), [-1]))
-            #languages.extend(predictions)
+            languages.extend(predictions)
         return languages	
 
 
@@ -328,7 +328,7 @@ if __name__ == "__main__":
     with open("{}/nli_dev.txt".format(args.logdir), "w", encoding="utf-8") as test_file:
         languages = network.predict(dev, args.batch_size)
         for language in languages:
-            print(test.vocabulary("languages")[language], file=test_file)
+            print(dev.vocabulary("languages")[language], file=test_file)
 
 
     # Predict test data
