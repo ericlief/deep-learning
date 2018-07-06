@@ -25,7 +25,7 @@ class Network:
             self.is_training = tf.placeholder(tf.bool, [], name="is_training")
             
             # Convert to one-hot repr
-            labels = tf.one_hot(self.languages, num_langs)
+            #labels = tf.one_hot(self.languages, num_langs)
             
             # TODO: Training.
             # Define:
@@ -101,24 +101,33 @@ class Network:
                     cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, input_size=embedded_inputs.get_shape()[-1], input_keep_prob=1-args.dropout_text, output_keep_prob=1-args.dropout_text, variational_recurrent=True, dtype=tf.float32)
                     cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, input_size=embedded_inputs.get_shape()[-1], input_keep_prob=1-args.dropout_text, output_keep_prob=1-args.dropout_text, variational_recurrent=True, dtype=tf.float32)            
                               
-                _, states = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, embedded_inputs, self.sentence_lens, dtype=tf.float32, scope='text')
+                #_, states = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, embedded_inputs, self.sentence_lens, dtype=tf.float32, scope='text')
                 
-                sum_states = tf.reduce_sum(states, axis=0)
-                print('sum states', sum_states)
+                #sum_states = tf.reduce_sum(states, axis=0)
+                #print('sum states', sum_states)
                 
         
-            averaged_states = tf.reduce_mean(sum_states, axis=-1)
-            print('ave states', averaged_states)
+                #averaged_states = tf.reduce_mean(sum_states, axis=-1)
+                #print('ave states', averaged_states)
+          
+                outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, embedded_inputs, self.sentence_lens, dtype=tf.float32, scope='text')
+                
+                outputs = tf.concat(outputs, axis=-1)
+                print('outputs conc', outputs)
+                
       
             # Add a dense layer (without activation) into num_languages classes and
             # store result in `logits`.
             #logits = tf.layers.dense(text_features, num_langs) 
             #print('logits', logits) # -> (?,?,11) ~ (?, 11)
             
-            logits = tf.layers.dense(sum_states, num_langs) 
+            #logits = tf.layers.dense(sum_states, num_langs) 
+            logits = tf.layers.dense(outputs, num_langs) 
+            
             print('logits', logits) # -> (?,?,11) ~ (?, 11)
             
-            
+            reduced = tf.reduce_mean(logits, axis=1)
+            print ('red', reduced) # (?, 11)
             #print('labels', self.languages, self.languages.get_shape().as_list()) # ->(?,?), (None,None)
             #logits = tf.layers.flatten(logits)
             #print('flat out', logits)
@@ -126,57 +135,62 @@ class Network:
             #print('reshaped labels', self.languages)
 
             # Generate `self.predictions`.
-            self.predictions = tf.argmax(logits, axis=-1) # 3rd dim!
+            self.predictions = tf.argmax(reduced, axis=-1) # 3rd dim!
+            
             # Convert predictions into one-hot
-            self.predictions = tf.one_hot(self.predictions, num_langs)
+            #self.predictions = tf.one_hot(self.predictions, num_langs)
             #print(self.predictions)     # -> (?,11)
             
             # Generate `weights` as a 1./0. mask of valid/invalid words (using `tf.sequence_mask`).
             #weights = tf.sequence_mask(self.sentence_lens, dtype=tf.float32)
             
             # Training
-            #loss = tf.losses.sparse_softmax_cross_entropy(labels=self.languages, logits=logits)
-            loss = tf.losses.softmax_cross_entropy(onehot_labels=labels, logits=logits)
+            loss = tf.losses.sparse_softmax_cross_entropy(labels=self.languages, logits=reduced)
+            #loss = tf.losses.softmax_cross_entropy(onehot_labels=labels, logits=reduced)
             global_step = tf.train.create_global_step()
             
-            # For adaptable learning rate if desired
-            #self.learning_rate = tf.get_variable("learning_rate", dtype=tf.float32, initializer=args.learning_rate) 
-            # Set adaptable learning rate with decay
-            learning_rate = args.learning_rate  # init rate         
-            if args.learning_rate_final and args.epochs > 1:
-            # Polynomial decay
-                if not args.decay_rate: 
-                    decay_rate = (args.learning_rate_final / args.learning_rate)**(1 / (args.epochs - 1))
-                learning_rate = tf.train.polynomial_decay(args.learning_rate, global_step, batches_per_epoch, decay_rate, staircase=True) # change lr each batch
-            # Exponential decay
-            else:
-                learning_rate = tf.train.exponential_decay(args.learning_rate, global_step, batches_per_epoch, args.decay_rate, staircase=True) # change lr each batch
+            self.training = tf.train.AdamOptimizer().minimize(loss, global_step=global_step, name="training")
+
+            
+            ## For adaptable learning rate if desired
+            ##self.learning_rate = tf.get_variable("learning_rate", dtype=tf.float32, initializer=args.learning_rate) 
+            ## Set adaptable learning rate with decay
+            #learning_rate = args.learning_rate  # init rate         
+            #if args.learning_rate_final and args.epochs > 1:
+            ## Polynomial decay
+                #if not args.decay_rate: 
+                    #decay_rate = (args.learning_rate_final / args.learning_rate)**(1 / (args.epochs - 1))
+                #learning_rate = tf.train.polynomial_decay(args.learning_rate, global_step, batches_per_epoch, decay_rate, staircase=True) # change lr each batch
+            ## Exponential decay
+            #else:
+                #learning_rate = tf.train.exponential_decay(args.learning_rate, global_step, batches_per_epoch, args.decay_rate, staircase=True) # change lr each batch
         
         
-            # Choose optimizer                                              
-            if args.optimizer == "SGD" and args.momentum:
-                optimizer = tf.train.MomentumOptimizer(learning_rate, momentum=args.momentum) 
-                self.training = tf.train.GradientDescentOptimizer(learning_rate) 
-            elif args.optimizer == "SGD":
-                optimizer = tf.train.GradientDescentOptimizer(learning_rate) 
-            else:                
-                optimizer = tf.train.AdamOptimizer(learning_rate) 
+            ## Choose optimizer                                              
+            #if args.optimizer == "SGD" and args.momentum:
+                #optimizer = tf.train.MomentumOptimizer(learning_rate, momentum=args.momentum) 
+                #self.training = tf.train.GradientDescentOptimizer(learning_rate) 
+            #elif args.optimizer == "SGD":
+                #optimizer = tf.train.GradientDescentOptimizer(learning_rate) 
+            #else:                
+                #optimizer = tf.train.AdamOptimizer(learning_rate) 
         
         
-            # Note how instead of `optimizer.minimize` we first get the # gradients using
-            # `optimizer.compute_gradients`, then optionally clip them and
-            # finally apply then using `optimizer.apply_gradients`.
-            gradients, variables = zip(*optimizer.compute_gradients(loss))
-            # TODO: Compute norm of gradients using `tf.global_norm` into `gradient_norm`.
-            gradient_norm = tf.global_norm(gradients) 
-            # TODO: If args.clip_gradient, clip gradients (back into `gradients`) using `tf.clip_by_global_norm`.            
-            if args.clip_gradient is not None:
-                gradients, _ = tf.clip_by_global_norm(gradients, clip_norm=args.clip_gradient, use_norm=gradient_norm)
-            self.training = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step)              
+            ## Note how instead of `optimizer.minimize` we first get the # gradients using
+            ## `optimizer.compute_gradients`, then optionally clip them and
+            ## finally apply then using `optimizer.apply_gradients`.
+            #gradients, variables = zip(*optimizer.compute_gradients(loss))
+            ## TODO: Compute norm of gradients using `tf.global_norm` into `gradient_norm`.
+            #gradient_norm = tf.global_norm(gradients) 
+            ## TODO: If args.clip_gradient, clip gradients (back into `gradients`) using `tf.clip_by_global_norm`.            
+            #if args.clip_gradient is not None:
+                #gradients, _ = tf.clip_by_global_norm(gradients, clip_norm=args.clip_gradient, use_norm=gradient_norm)
+            #self.training = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step)              
             
             # Summaries
             #self.current_accuracy, self.update_accuracy = tf.metrics.accuracy(labels_hot, self.predictions)
-            self.current_accuracy, self.update_accuracy = tf.metrics.accuracy(labels, self.predictions)
+            
+            self.current_accuracy, self.update_accuracy = tf.metrics.accuracy(self.languages, self.predictions)
             self.current_loss, self.update_loss = tf.metrics.mean(loss, weights=tf.size(self.sentence_lens))
             self.reset_metrics = tf.variables_initializer(tf.get_collection(tf.GraphKeys.METRIC_VARIABLES))
 
@@ -185,7 +199,6 @@ class Network:
             
             with summary_writer.as_default(), tf.contrib.summary.record_summaries_every_n_global_steps(10):
                 self.summaries["train"] = [tf.contrib.summary.scalar("train/loss", self.update_loss),
-                                           tf.contrib.summary.scalar("train/gradient_norm", gradient_norm),
                                            tf.contrib.summary.scalar("train/accuracy", self.update_accuracy)]              
             with summary_writer.as_default(), tf.contrib.summary.always_record_summaries():
                 for dataset in ["dev", "test"]:
