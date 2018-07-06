@@ -280,7 +280,7 @@ if __name__ == "__main__":
     #with open("fashion_masks_test.txt", "w") as test_file:
     with open("{}/fashion_masks_dev.txt".format(args.logdir), "w") as test_file:
         
-        while not test.epoch_finished():
+        while not dev.epoch_finished():
             images, _, _ = dev.next_batch(args.batch_size)
             labels, masks = network.predict(images)
             for i in range(len(labels)):
