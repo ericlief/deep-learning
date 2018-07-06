@@ -225,7 +225,6 @@ class Network:
             self.summaries = {}
             with summary_writer.as_default(), tf.contrib.summary.record_summaries_every_n_global_steps(10):
                 self.summaries["train"] = [tf.contrib.summary.scalar("train/loss", self.update_loss),
-                                           tf.contrib.summary.scalar("train/gradient_norm", gradient_norm),
                                            tf.contrib.summary.scalar("train/accuracy", self.update_accuracy)]              
             with summary_writer.as_default(), tf.contrib.summary.always_record_summaries():
                 for dataset in ["dev", "test"]:
